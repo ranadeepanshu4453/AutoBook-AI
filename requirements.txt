@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+mysql-connector-python
+motor
+chromadb
+sentence-transformers
+pandas
+python-dotenv
+dateparser
+sentence-transformers 
+scikit-learn 
+numpy
+aiomysql
