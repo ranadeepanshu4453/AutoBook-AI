@@ -1,11 +1,13 @@
 from app.enums.intent_enums import IntentType
 from app.enums.stage_enums import BookingStages
-from app.services.intent.response_builder import (
+from app.core.logger import logger
+from app.services.CarService.partials.response_builder import (
     filtered_options_message, fuel_question, make_response,
     seating_question, transmission_question,
 )
 
 TRANS_NORMALIZE = {"1": "automatic", "2": "manual"}
+FUEL_NORMALIZE = {"p": "petrol","d": "diesel","b": "hybrid","e": "electric","h": "hydrogen",}
 
 def _normalize_trans(val: str) -> str:
     return TRANS_NORMALIZE.get(str(val), str(val).lower())
@@ -15,9 +17,16 @@ def _apply_filters(inventory: list[dict], entities: dict) -> list[dict]:
     if "seating_capacity" in entities:
         filtered = [c for c in filtered if int(c["seatingCapacity"]) == int(entities["seating_capacity"])]
     if "transmission_type" in entities:
-        filtered = [c for c in filtered if _normalize_trans(c["transmissionType"]) == entities["transmission_type"].lower()]
+        logger.info(f"Filtering transmission: looking for '{entities['transmission_type']}'")
+        for c in filtered:
+            logger.info(f"  Car {c['id']}: raw='{c['transmissionType']}' normalized='{_normalize_trans(c['transmissionType'])}'")
+        filtered = [
+            c for c in filtered
+            if _normalize_trans(c["transmissionType"]) == entities["transmission_type"].lower()
+        ]
+        logger.info(f"After transmission filter: {len(filtered)} cars")
     if "fuel_type" in entities:
-        filtered = [c for c in filtered if str(c.get("fuelType", "")).lower() == entities["fuel_type"].lower()]
+        filtered = [c for c in filtered if FUEL_NORMALIZE.get(str(c.get("fuelType", "")).lower()) == entities["fuel_type"].lower()]
     return filtered
 
 async def run_adjustment(
@@ -54,7 +63,7 @@ async def run_adjustment(
     trans_filter = {"transmission_type": merged_entities["transmission_type"]} if "transmission_type" in merged_entities else {}
     filtered_by_trans = _apply_filters(filtered_by_seating, trans_filter)
     available_fuels = list({
-        str(c.get("fuelType", "")).lower()
+        FUEL_NORMALIZE.get(str(c.get("fuelType", "")).lower(), str(c.get("fuelType","")).lower())
         for c in filtered_by_trans if c.get("fuelType")
     })
 

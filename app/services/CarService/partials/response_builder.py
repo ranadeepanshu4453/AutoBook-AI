@@ -4,10 +4,11 @@ from app.models.intent_models import IntentResponse
 
 TRANS_DISPLAY = {"1": "Automatic", "2": "Manual", "automatic": "Automatic", "manual": "Manual"}
 FUEL_DISPLAY = {
-    "petrol": "Petrol",   "p": "Petrol",  "b": "Petrol",
-    "diesel": "Diesel",   "d": "Diesel",
-    "electric": "Electric", "e": "Electric",
-    "hybrid": "Hybrid",   "h": "Hybrid",
+    "p": "Petrol",    "petrol": "Petrol",
+    "d": "Diesel",    "diesel": "Diesel",
+    "b": "Hybrid",    "hybrid": "Hybrid",
+    "e": "Electric",  "electric": "Electric",
+    "h": "Hydrogen",  "hydrogen": "Hydrogen",
 }
 
 def _display_trans(val: str) -> str:
@@ -101,6 +102,8 @@ def format_cars_for_display(inventory: list[dict]) -> list[dict]:
             "seating":      c["seatingCapacity"],
             "transmission": TRANS_MAP.get(str(c.get("transmissionType", "")), c.get("transmissionType", "")),
             "fuel":         str(c.get("fuelType", "")).capitalize(),
+            "body_type":    str(c.get("bodyType", "")).capitalize(),   
+            "doors":        c.get("doors", ""),                       
         })
 
     return results

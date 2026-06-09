@@ -4,7 +4,8 @@ from fastapi import FastAPI
 from app.api.v1.api_router import router as v1_router
 from app.db.mongo import mongo_db
 from app.db.mysql_db import mysql_db
-from app.services.semantic_intent_service import semantic_intent_service  # ← add
+from app.services.semantic_intent_service import semantic_intent_service 
+from app.ollama.ollama_service import ollama_service 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -15,12 +16,14 @@ async def lifespan(app: FastAPI):
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, semantic_intent_service.detect_intent, "hello")
 
+    ollama_service._is_available()
+    
     yield
 
     mongo_db.close()
     await mysql_db.close()
 
-app = FastAPI(title="AI Work Diary Microservice", lifespan=lifespan)
+app = FastAPI(title="AI Car Booking Microservice", lifespan=lifespan)
 
 app.include_router(v1_router, prefix="/api/v1")
 

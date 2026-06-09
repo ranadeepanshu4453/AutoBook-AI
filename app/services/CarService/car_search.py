@@ -2,52 +2,7 @@ from app.db.mysql_db import mysql_db
 from app.core.logger import logger
 
 
-class CarService:
-
-    async def search_available_cars(self, entities: dict):
-        if not mysql_db.pool:
-            await mysql_db.connect()
-
-        async with mysql_db.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                sql = """
-                    SELECT id, carMake, carModel, seating_capacity,
-                           info8 AS transmission, info5 AS fuel
-                    FROM cars
-                """
-                params = []
-
-                if "seating_capacity" in entities:
-                    sql += " AND seating_capacity = %s"
-                    params.append(entities["seating_capacity"])
-
-                if "transmission_type" in entities:
-                    trans_val = "1" if entities["transmission_type"] == "automatic" else "2"
-                    sql += " AND info8 = %s"
-                    params.append(trans_val)
-
-                if "fuel_type" in entities:
-                    sql += " AND info5 LIKE %s"
-                    params.append(f"%{entities['fuel_type']}%")
-
-                # Exclude cars already booked for the requested dates
-                if "booking_date_iso" in entities:
-                    end_date = entities.get("booking_date_end", entities["booking_date_iso"])
-                    sql += """
-                        AND id NOT IN (
-                            SELECT DISTINCT carId
-                            FROM rental_car_booking
-                            WHERE status IN (1, 2)
-                            AND fromDate < STR_TO_DATE(%s, '%%Y-%%m-%%d')
-                            AND toDate   > STR_TO_DATE(%s, '%%Y-%%m-%%d')
-                        )
-                    """
-                    params.append(end_date)
-                    params.append(entities["booking_date_iso"])
-
-                logger.info(f"Executing search: {sql} | Params: {params}")
-                await cur.execute(sql, tuple(params))
-                return await cur.fetchall()
+class CarSearch:
 
     async def get_available_inventory(self, date_iso: str, date_end_iso: str = None) -> list[dict]:
         """
@@ -64,6 +19,8 @@ class CarService:
                     seating_capacity,
                     info8 AS transmission_type,
                     info5 AS fuel_type,
+                    info7 AS body_type,
+                    info4 AS Doors,
                     carMake,
                     carModel
                 FROM cars
@@ -97,6 +54,8 @@ class CarService:
                     "seatingCapacity":  int(row["seating_capacity"]),
                     "transmissionType": row["transmission_type"],
                     "fuelType":         row["fuel_type"],
+                    "bodyType":         row.get("body_type", ""),   
+                    "doors":            row.get("doors", ""),        
                     "carMake":          make,
                     "carModel":         model,
                 })
@@ -109,4 +68,4 @@ class CarService:
             return []
 
 
-car_service = CarService()
+car_search = CarSearch()    

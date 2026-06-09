@@ -11,3 +11,5 @@ sentence-transformers
 scikit-learn 
 numpy
 aiomysql
+# streamlit
+#ollama

@@ -5,7 +5,7 @@ from app.models.intent_models import (
     IntentResponse
 )
 
-from app.services.intent_service import (
+from app.services.CarService.intent_service import (
     intent_service
 )
 
@@ -77,7 +77,10 @@ async def analyze_intent(request: IntentRequest):
 
             entities=analysis.entities,
 
-            stage=analysis.next_stage
+            stage=analysis.next_stage,
+            
+            available_inventory=analysis.available_inventory,  # persist inventory
+
         )
 
         logger.info(
@@ -95,8 +98,13 @@ async def analyze_intent(request: IntentRequest):
             user_id=request.user_id,
 
             user_query=request.query,
+            
+            assistant_response=analysis.response_message,  
 
-            analysis=analysis.dict()
+            analysis=analysis.dict(),
+            
+            stage=analysis.next_stage,     
+
         )
 
         # -------------------------------------------------

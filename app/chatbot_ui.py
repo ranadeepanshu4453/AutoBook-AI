@@ -48,6 +48,7 @@ API_URL   = "http://127.0.0.1:8000/api/v1/intent/analyze"
 TODAY     = datetime.date.today()
 
 FUEL_MAP  = {"d":"Diesel","diesel":"Diesel","p":"Petrol","petrol":"Petrol","b":"Petrol","e":"Electric","electric":"Electric","h":"Hybrid","hybrid":"Hybrid"}
+BODY_TYPE_MAP  = {"S":"Sedan","1":"Hatchback","2":"SUV","3":"Coupe","4":"Sports Car","5":"Station Wagon","6":"Convertible","7":"Minivan","8":"Pick Up Truck","9":"Van","10":"Prime Mover","11":"Scooter"}
 TRANS_MAP = {"1":"Automatic","2":"Manual","automatic":"Automatic","manual":"Manual"}
 STAGE_MAP = {
     "collecting_dates":          "📅 Collecting Dates",
@@ -73,6 +74,7 @@ if "messages" not in st.session_state:
 
 def fmt_fuel(v):  return FUEL_MAP.get(str(v).lower(), str(v).capitalize()) if v else ""
 def fmt_trans(v): return TRANS_MAP.get(str(v).lower(), str(v).capitalize()) if v else ""
+def fmt_body_type(v): return BODY_TYPE_MAP.get(str(v).lower(), str(v).capitalize()) if v else ""
 
 # ── Helpers ───────────────────────────────────────────────────────────
 def summary_html(entities):
@@ -83,6 +85,7 @@ def summary_html(entities):
     if entities.get("seating_capacity"):  rows.append(("Seating", f"{entities['seating_capacity']} Seater"))
     if entities.get("transmission_type"): rows.append(("Transmission", fmt_trans(entities["transmission_type"])))
     if entities.get("fuel_type"):         rows.append(("Fuel", fmt_fuel(entities["fuel_type"])))
+    if entities.get("body_type"):         rows.append(("body_type", fmt_body_type(entities["body_type"])))
     r = "".join(f'<div class="srow"><span class="sk">{k}</span><span class="sv">{v}</span></div>' for k,v in rows)
     return f'<div class="summary-card"><div class="sh">Booking Summary</div>{r}</div>'
 
@@ -96,10 +99,15 @@ def render_car_cards_native(cars, msg_idx=0):
         seats = car.get("seating","")
         trans = fmt_trans(car.get("transmission",""))
         fuel  = fmt_fuel(car.get("fuel",""))
+        body  = car.get("body_type", "")
+        doors = car.get("doors", "")
         b = ""
         if seats: b += f'<span class="badge">{seats} Seat</span>'
         if trans: b += f'<span class="badge">{trans}</span>'
         if fuel:  b += f'<span class="badge">{fuel}</span>'
+        if body:  b += f'<span class="badge">{body}</span>'
+        if doors and str(doors).isdigit() and int(doors) > 0:
+            b += f'<span class="badge">{doors} Doors</span>'
         with cols[i % 3]:
             st.markdown(f'<div class="car-card"><div class="car-num">#{i+1}</div><div class="car-name">{name}</div><div class="badges">{b}</div></div>', unsafe_allow_html=True)
             if st.button(f"Book #{i+1}", key=f"book_{msg_idx}_{i}"):
@@ -118,7 +126,7 @@ def send_to_api(query: str):
             "query":      query,
             "user_id":    st.session_state.user_id,
             "session_id": st.session_state.session_id,
-        }, timeout=30)
+        }, timeout=90)
         r.raise_for_status()
         data = r.json()
     except requests.exceptions.ConnectionError:

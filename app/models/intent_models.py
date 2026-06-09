@@ -1,11 +1,13 @@
 from pydantic import BaseModel, Field
-from typing import Dict, Any, Optional , List
+from typing import Dict, Any, Optional, List
 from app.enums.intent_enums import IntentType
+
 
 class IntentRequest(BaseModel):
     query: str
     user_id: Optional[int] = None
     session_id: Optional[str] = None
+
 
 class IntentResponse(BaseModel):
     intent: IntentType
@@ -14,7 +16,7 @@ class IntentResponse(BaseModel):
     raw_query: str
     missing_entities: List[str] = []
     next_stage: Optional[str] = None
-    # data: list | None  = None
     response_message: Optional[str] = None
-    # available_inventory: list | None = None
-    cars: list= [] 
+    data: Optional[List[Dict[str, Any]]] = None
+    available_inventory: Optional[List[Dict[str, Any]]] = None
+    cars: List[Dict[str, Any]] = []
