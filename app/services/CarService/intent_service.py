@@ -2,6 +2,9 @@ import re
 import random
 
 from app.core.logger import logger
+import asyncio
+from app.learning.feedback_collector import feedback_collector
+from app.learning.example_store import example_store
 from app.enums.intent_enums import IntentType
 from app.enums.stage_enums import BookingStages
 from app.models.intent_models import IntentResponse
@@ -281,7 +284,38 @@ class IntentService:
             )
 
         logger.info(f"[{session_id}] Intent: {detected_intent} | Confidence: {confidence:.2f} | Tier: {tier}")
+        # ── Learning signals ──────────────────────────────────────────────────
+        if tier in ("LOW", "REJECT") or confidence < 0.65:
+            asyncio.create_task(feedback_collector.record(
+                session_id=session_id,
+                query=cleaned,
+                detected_intent=detected_intent,
+                confidence=confidence,
+                stage_before=prev_stage,
+                entities_extracted=initial_entities,
+                signal_type="LOW_CONF",
+            ))
+        elif confidence >= 0.82 and detected_intent not in (IntentType.UNKNOWN, None):
+            asyncio.create_task(example_store.add_candidate(
+                query=cleaned,
+                intent=detected_intent.value,
+                confidence=confidence,
+                source="implicit",
+            ))
 
+        # Correction detection: if last response was unknown and user now
+        # provides entities, the previous query was a failed rephrase attempt
+        if context.get("last_response_was_unknown") and has_useful_entities(initial_entities):
+            last_query = context.get("last_query", "")
+            if last_query:
+                asyncio.create_task(feedback_collector.record_correction(
+                    session_id=session_id,
+                    original_query=last_query,
+                    rephrased_query=cleaned,
+                    detected_intent=detected_intent,
+                    confidence=confidence,
+                ))
+        # ─────────────────────────────────────────────────────────────────────
         # 7. Repeated failure guard
         consecutive_failures = fallback_handler.get_failure_count(session_id)
         if consecutive_failures >= 3:
@@ -345,10 +379,19 @@ class IntentService:
             if result:
                 detected_intent, confidence, merged_entities = result
             else:
-                return make_response(
+                asyncio.create_task(feedback_collector.record(
+                    session_id=session_id,
+                    query=cleaned,
+                    detected_intent=IntentType.UNKNOWN,
+                    confidence=confidence,
+                    stage_before=prev_stage,
+                    entities_extracted={},
+                    signal_type="UNKNOWN_IN_FLOW",
+                ))
+                response = make_response(
                     intent=IntentType.UNKNOWN, confidence=confidence,
                     entities=previous_entities, missing_entities=[],
-                    next_stage=prev_stage,  # keep user at current stage
+                    next_stage=prev_stage,
                     response_message=(
                         "I didn't quite catch that. "
                         "You can pick a car number, tell me your preferred dates, "
@@ -357,6 +400,9 @@ class IntentService:
                     raw_query=query,
                     available_inventory=available_inventory,
                 )
+                # Tag context so next turn can detect correction pattern
+                response.metadata = {"last_response_was_unknown": True, "last_query": cleaned}
+                return response
 
         # 12. Route to booking flow
         if detected_intent in CAR_INTENTS:

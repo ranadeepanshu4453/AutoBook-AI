@@ -228,7 +228,7 @@ if prompt := st.chat_input("Type a message..."):
         st.session_state.messages.append({"role":"user","content":prompt})
         with st.chat_message("assistant"):
             with st.spinner(""):
-                msg_text, cars, entities, stage_lbl = send_to_api("i want to book a car")
+                msg_text, cars, entities, stage_lbl = send_to_api("hi")
             append_and_render_bot(msg_text, cars, entities, stage_lbl)
         st.rerun()
 

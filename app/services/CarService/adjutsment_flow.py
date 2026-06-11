@@ -18,8 +18,6 @@ def _apply_filters(inventory: list[dict], entities: dict) -> list[dict]:
         filtered = [c for c in filtered if int(c["seatingCapacity"]) == int(entities["seating_capacity"])]
     if "transmission_type" in entities:
         logger.info(f"Filtering transmission: looking for '{entities['transmission_type']}'")
-        for c in filtered:
-            logger.info(f"  Car {c['id']}: raw='{c['transmissionType']}' normalized='{_normalize_trans(c['transmissionType'])}'")
         filtered = [
             c for c in filtered
             if _normalize_trans(c["transmissionType"]) == entities["transmission_type"].lower()

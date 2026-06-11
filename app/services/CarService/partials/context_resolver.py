@@ -45,10 +45,13 @@ def resolve(
         and initial_entities.get("booking_dates") != previous_entities.get("booking_dates")
     ):
         logger.info("New dates detected — clearing stale booking state")
+        logger.info(f"Before cleaning: {previous_entities}")
+        logger.info(f"FILTER_KEYS: {_FILTER_KEYS}")
         cleaned = {
             k: v for k, v in previous_entities.items()
-            if k not in _STALE_KEYS + _FILTER_KEYS
+            if k not in _STALE_KEYS
         }
+        logger.info(f"After cleaning: {cleaned}")
         return IntentType.CAR_BOOKING, 0.90, {**cleaned, **initial_entities}
 
     # ── Rule 2 & 3: High-confidence intent ────────────────────────────────────

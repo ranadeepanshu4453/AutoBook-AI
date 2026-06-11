@@ -148,18 +148,53 @@ def _is_garbage(token: str) -> bool:
 
     return False
 
+# Matches "from 12 to 14 june", "12 to 14 june", "12-14 june" etc.
+# Captures a bare day number paired with a month-anchored end date.
+_BARE_DAY_RANGE = re.compile(
+    r'\b(\d{1,2})\s*(?:to|-|through|till|until)\s*(\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|'
+    r'apr(?:il)?|june?|july?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?))\b',
+    re.IGNORECASE,
+)
+
 
 def extract_dates(text: str) -> dict | None:
-    """
-    Extract a date or date range from natural language text.
-    Returns a dict with type/raw/iso fields, or None if no valid date found.
-    """
     text     = text.lower().strip()
     expanded = _expand_relative_ranges(text)
 
     try:
-        results = search_dates(expanded, languages=["en"], settings=_DATEPARSER_SETTINGS)
+        # ── Fast path: bare-day range like "12 to 14 june" ───────────────────
+        # search_dates drops the bare "12" because it has no month context.
+        # We detect the pattern first and inject the month from the end token.
+        bare_match = _BARE_DAY_RANGE.search(expanded)
+        if bare_match:
+            start_day_str = bare_match.group(1)
+            end_str       = bare_match.group(2).strip()  # e.g. "14 june"
 
+            # Extract month from end token and attach to start day
+            month_match = re.search(
+                r'(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|june?|july?|'
+                r'aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)',
+                end_str, re.IGNORECASE,
+            )
+            if month_match:
+                start_str = f"{start_day_str} {month_match.group(1)}"
+                # Parse both with dateparser for correct year/future handling
+                start_results = search_dates(start_str, languages=["en"], settings=_DATEPARSER_SETTINGS)
+                end_results   = search_dates(end_str,   languages=["en"], settings=_DATEPARSER_SETTINGS)
+
+                if start_results and end_results:
+                    start_date = start_results[0][1]
+                    end_date   = end_results[0][1]
+                    if end_date.date() >= start_date.date():
+                        return {
+                            "type":      "range",
+                            "raw":       f"{start_str} to {end_str}",
+                            "start_iso": start_date.date().isoformat(),
+                            "end_iso":   end_date.date().isoformat(),
+                        }
+
+        # ── Standard path ────────────────────────────────────────────────────
+        results = search_dates(expanded, languages=["en"], settings=_DATEPARSER_SETTINGS)
         if not results:
             return None
 
@@ -175,7 +210,6 @@ def extract_dates(text: str) -> dict | None:
         if len(valid) >= 2:
             start_raw, start_date = valid[0]
             end_raw,   end_date   = valid[1]
-
             if end_date.date() > start_date.date():
                 return {
                     "type":      "range",
@@ -184,7 +218,6 @@ def extract_dates(text: str) -> dict | None:
                     "end_iso":   end_date.date().isoformat(),
                 }
 
-        # Single date
         raw, date = valid[0]
         return {
             "type": "single",

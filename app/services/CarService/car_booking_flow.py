@@ -17,6 +17,8 @@ from app.enums.stage_enums import BookingStages
 from app.models.intent_models import IntentResponse
 from app.services.CarService.adjutsment_flow import run_adjustment, _apply_filters, _normalize_trans
 from app.services.CarService.car_search import car_search
+import asyncio
+from app.learning.feedback_collector import feedback_collector
 from app.services.CarService.partials.response_builder import (
     car_options_message,
     filtered_options_message,
@@ -107,6 +109,25 @@ async def run(
                 date_iso=merged_entities.get("booking_date_iso"),
                 date_end_iso=merged_entities.get("booking_date_end"),
             )
+            filtered_data=_apply_filters(available_inventory,merged_entities)
+            logger.info(f"Available Data fetch: {available_inventory}")
+            logger.info(f"Filtered Data fetch: {filtered_data}")
+            if (merged_entities.get('seating_capacity') or merged_entities.get('fuel_type') or merged_entities.get('transmission_type')) and filtered_data:
+                return make_response(
+                intent=detected_intent, confidence=confidence,
+                entities=merged_entities, missing_entities=[],
+                next_stage=BookingStages.SHOWING_OPTIONS,
+                response_message=car_options_message(filtered_data,merged_entities["booking_dates"]),
+                raw_query=raw_query, available_inventory=available_inventory, data=filtered_data,
+                )
+            if not filtered_data:
+                return make_response(
+                intent=detected_intent, confidence=confidence,
+                entities=merged_entities, missing_entities=[],
+                next_stage=BookingStages.SHOWING_OPTIONS,
+                response_message=filtered_options_message(filtered_data,filtered_data),
+                raw_query=raw_query, available_inventory=available_inventory, data=filtered_data,
+                )
         except Exception as e:
             logger.error(f"Inventory fetch error: {e}")
             return make_response(
@@ -223,6 +244,20 @@ def _handle_confirm_stage(
     if _is_confirmed(merged_entities, raw_query):
         car_name = merged_entities.get("selected_car_name", "your car")
         dates    = merged_entities.get("booking_dates", "your selected dates")
+
+        # Record successful booking — highest quality learning signal
+        asyncio.create_task(feedback_collector.record_success(
+            session_id=merged_entities.get("_session_id", "unknown"),
+            booking_summary={
+                "car_name":         car_name,
+                "dates":            dates,
+                "seating":          merged_entities.get("seating_capacity"),
+                "transmission":     merged_entities.get("transmission_type"),
+                "fuel":             merged_entities.get("fuel_type"),
+                "selected_car_id":  merged_entities.get("selected_car_id"),
+            },
+        ))
+
         return make_response(
             intent=detected_intent, confidence=confidence,
             entities=merged_entities, missing_entities=[],

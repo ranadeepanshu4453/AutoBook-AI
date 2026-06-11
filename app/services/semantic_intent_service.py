@@ -3,13 +3,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from app.data.intent_examples import INTENT_EXAMPLES
 from app.core.logger import logger
-
+import os
 
 class ConfidenceThresholds:
     HIGH   = 0.75
     MEDIUM = 0.50
     LOW    = 0.35
-    REJECT = 0.35
+    REJECT = 0.20
 
 
 class SemanticIntentService:
@@ -21,17 +21,48 @@ class SemanticIntentService:
     @property
     def model(self):
         if self._model is None:
-            import sys
-            print("Loading sentence transformer model...", flush=True)
-            sys.stdout.flush()
-            self._model = SentenceTransformer('all-MiniLM-L6-v2')
+            model_path = os.getenv("MODEL_PATH", "AI_models/all-MiniLM-L6-v2")
+            logger.info(f"Loading sentence transformer from: {model_path}")
+            self._model = SentenceTransformer(model_path)
+            logger.info("Model loaded successfully")
             self._prepare_embeddings()
-            print("Model loaded ✓", flush=True)
         return self._model
 
     def _prepare_embeddings(self):
         for intent, examples in INTENT_EXAMPLES.items():
             self._intent_embeddings[intent] = self._model.encode(examples)
+    
+    def reload_embeddings(self, additional_examples: dict[str, list[str]] | None = None) -> None:
+        """
+        Hot-reload embeddings — merges base INTENT_EXAMPLES with any
+        additional learned examples passed in.
+        Called by retraining scheduler after a successful retrain cycle.
+        No server restart needed.
+        """
+        _ = self.model  # ensure model is loaded
+
+        merged: dict[str, list[str]] = {}
+        for intent, examples in INTENT_EXAMPLES.items():
+            merged[intent] = list(examples)
+
+        if additional_examples:
+            for intent, examples in additional_examples.items():
+                if intent not in merged:
+                    merged[intent] = []
+                for ex in examples:
+                    if ex not in merged[intent]:
+                        merged[intent].append(ex)
+
+        new_embeddings = {}
+        for intent, examples in merged.items():
+            new_embeddings[intent] = self._model.encode(examples)
+
+        # Atomic swap — thread-safe enough for single-process FastAPI
+        self._intent_embeddings = new_embeddings
+        logger.info(
+            f"Embeddings reloaded — {len(new_embeddings)} intents, "
+            f"{sum(len(v) for v in new_embeddings.values())} total examples"
+        )
 
     def _get_tier(self, score: float) -> str:
         if score >= ConfidenceThresholds.HIGH:   return "HIGH"

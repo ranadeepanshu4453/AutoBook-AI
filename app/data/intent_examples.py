@@ -5,50 +5,120 @@ INTENT_EXAMPLES = {
 
     IntentType.CAR_BOOKING: [
 
-        "book a car",
-        "confirm booking",
-        "reserve this car",
-        "i want to book this vehicle",
-        "book this suv",
-        "confirm my rental",
-        "reserve a 7 seater",
-        "i want to proceed with booking",
-        "book this automatic car",
-        "rent this vehicle",
-        "schedule this booking",
-        "finalize the car booking",
-        "book vehicle for next week",
-        "confirm my car reservation",
-        "complete the booking process"
+        # ── Core booking phrases ──────────────────────────────────────────
+        "I want to book a car",
+        "I need to book a car",
+        "book a car for me",
+        "I want to rent a car",
+        "I need to rent a car",
+        "reserve a car",
+        "make a car booking",
+        "I want to make a booking",
+        "car rental booking",
+
+        # ── With dates ────────────────────────────────────────────────────
+        "book a car from 10 to 15 june",
+        "I need a car from monday to friday",
+        "rent a car from 1st july to 5th july",
+        "need a car from next thursday to sunday",
+        "book from 20 june to 25 june",
+        "car from 12 to 14 june",
+        "available from 15th to 18th",
+        "need a car this weekend",
+        "rent for next week",
+        "car for 3 days starting monday",
+        "need wheels from tuesday to thursday",
+
+        # ── With filters + dates (YOUR FAILING PATTERN) ───────────────────
+        "show me 5 seater cars from 12 to 14 june",
+        "5 seater manual car from 10 to 15 june",
+        "automatic car from next monday to wednesday",
+        "diesel suv from 20 to 25 june",
+        "7 seater from this friday to sunday",
+        "manual transmission car for next weekend",
+        "petrol car from 1 july to 7 july",
+        "show me automatic cars available next week",
+        "need a 5 seat automatic diesel from 15 to 18 june",
+        "looking for manual cars from thursday to saturday",
+
+        # ── Show me patterns ──────────────────────────────────────────────
+        "show me available cars",
+        "show me cars for next week",
+        "show me what cars you have",
+        "show me cars from 15 june",
+        "what cars do you have available",
+        "what cars are available next weekend",
+        "show available vehicles",
+
+        # ── Casual / conversational ───────────────────────────────────────
+        "need a ride next week",
+        "looking for a car to rent",
+        "want to hire a car",
+        "need wheels for the weekend",
+        "got anything available next thursday",
+        "any cars free on saturday",
+        "looking for something to drive next week",
+        "need transport from monday",
+        "any availability for june 20",
+
+        # ── Seating-first patterns ────────────────────────────────────────
+        "need a 7 seater",
+        "looking for a 5 seat car",
+        "want a 7 seater for next weekend",
+        "need something with 7 seats",
+        "family car with 7 seats",
+        "large car for 6 people",
+
+        # ── Transmission-first ────────────────────────────────────────────
+        "need an automatic car",
+        "looking for manual transmission",
+        "want an auto from next week",
+        "only manual cars please",
+        "prefer automatic gearbox",
+
+        # ── Fuel-first ────────────────────────────────────────────────────
+        "need a diesel car",
+        "looking for electric vehicle rental",
+        "want a petrol car for the weekend",
+        "any hybrid cars available",
+
+        # ── Typos and informal spelling ───────────────────────────────────
+        "nedd a car from monday",
+        "boo a car for next week",
+        "car form 15 to 18 june",
+        "5seater manual car from 12 to 14 june",
+        "automtic car next weekend",
     ],
 
     IntentType.CAR_SEARCH: [
 
-        "i need a car",
-        "looking for a vehicle",
-        "show available cars",
-        "need a 5 seater",
-        "need a 7 seater",
-        "looking for suv",
-        "family trip vehicle",
-        "need automatic car",
-        "need manual transmission",
-        "show hybrid cars",
-        "show diesel vehicles",
-        "available cars for next monday",
-        "need rental car",
-        "find available sedan",
-        "looking for transportation",
-        "show me cars",
-        "which cars are available",
-        "find me a car",
-        "need a vehicle for travel",
-        "looking for rental options",
-        "need a car for weekend",
-        "available luxury cars",
-        "show hatchback cars",
-        "need vehicle urgently",
-        "find available inventory"
+        # ── Browse without committing ─────────────────────────────────────
+        "what cars do you have",
+        "show me your fleet",
+        "list available cars",
+        "what vehicles are available",
+        "browse cars",
+        "see all cars",
+        "what options do you have",
+        "show me the car list",
+        "what cars can I rent",
+
+        # ── Availability checks ───────────────────────────────────────────
+        "is a toyota camry available",
+        "do you have any SUVs",
+        "any automatics available",
+        "check availability for next week",
+        "what is available for june 20",
+        "any cars available this weekend",
+        "is there anything available on saturday",
+
+        # ── Comparison / browsing ─────────────────────────────────────────
+        "show me different car options",
+        "what types of cars do you offer",
+        "compare available cars",
+        "what sedans do you have",
+        "show me SUVs",
+        "any luxury cars available",
     ],
 
     IntentType.INVENTORY_FIND: [
