@@ -21,10 +21,6 @@ from app.helpers.extract_dates import extract_dates
 TRANS_MAP = {"1": "automatic", "2": "manual"}
 
 # ── Word sets ─────────────────────────────────────────────────────────────────
-# Pure confirmation / decline — no filter intent mixed in.
-_CONFIRM_WORDS = frozenset({"yes", "yeah", "yep", "sure", "ok", "okay", "yup", "fine", "proceed", "book it"})
-_DECLINE_WORDS = frozenset({"no", "nope", "nah", "cancel", "not now"})
-
 # Phrases that EXPLICITLY mean "I want to adjust / filter the results".
 # Simple "yes" is intentionally absent — stage machine handles that.
 _ADJUST_PHRASES = (
@@ -171,21 +167,7 @@ def extract_entities(query: str) -> dict:
         entities["fuel_type"] = "diesel"
     elif re.search(r'\bpetrol\b|\bgasoline\b|\bgas\b', q):
         entities["fuel_type"] = "petrol"
-
-    # ── Yes / No confirmation ─────────────────────────────────────────────────
-    # Only set when the message is PURELY a confirmation word — no filter
-    # intent present.  Mixed messages like "yes, diesel please" let the
-    # fuel_type entity take precedence and confirmation stays unset.
-    _has_filter = any(
-        k in entities
-        for k in ("seating_capacity", "transmission_type", "fuel_type", "booking_dates")
-    )
-    if not _has_filter:
-        _words = set(q.split())
-        if _words <= _CONFIRM_WORDS or q in _CONFIRM_WORDS:
-            entities["confirmation"] = True
-        elif _words <= _DECLINE_WORDS or q in _DECLINE_WORDS:
-            entities["confirmation"] = False
+    
 
     # ── Adjustment intent ─────────────────────────────────────────────────────
     # Explicit filter/adjust phrases → True.

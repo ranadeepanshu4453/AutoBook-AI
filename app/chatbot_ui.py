@@ -47,7 +47,7 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif!important}
 API_URL   = "http://127.0.0.1:8000/api/v1/intent/analyze"
 TODAY     = datetime.date.today()
 
-FUEL_MAP  = {"d":"Diesel","diesel":"Diesel","p":"Petrol","petrol":"Petrol","b":"Petrol","e":"Electric","electric":"Electric","h":"Hybrid","hybrid":"Hybrid"}
+FUEL_MAP  = {"d":"Diesel","p":"Petrol","b":"Hybrid","e":"Electric","h":"Hydrogen"}
 BODY_TYPE_MAP  = {"S":"Sedan","1":"Hatchback","2":"SUV","3":"Coupe","4":"Sports Car","5":"Station Wagon","6":"Convertible","7":"Minivan","8":"Pick Up Truck","9":"Van","10":"Prime Mover","11":"Scooter"}
 TRANS_MAP = {"1":"Automatic","2":"Manual","automatic":"Automatic","manual":"Manual"}
 STAGE_MAP = {
@@ -74,7 +74,7 @@ if "messages" not in st.session_state:
 
 def fmt_fuel(v):  return FUEL_MAP.get(str(v).lower(), str(v).capitalize()) if v else ""
 def fmt_trans(v): return TRANS_MAP.get(str(v).lower(), str(v).capitalize()) if v else ""
-def fmt_body_type(v): return BODY_TYPE_MAP.get(str(v).lower(), str(v).capitalize()) if v else ""
+def fmt_body_type(v): return BODY_TYPE_MAP.get(str(v), str(v).capitalize()) if v else ""
 
 # ── Helpers ───────────────────────────────────────────────────────────
 def summary_html(entities):
@@ -99,7 +99,7 @@ def render_car_cards_native(cars, msg_idx=0):
         seats = car.get("seating","")
         trans = fmt_trans(car.get("transmission",""))
         fuel  = fmt_fuel(car.get("fuel",""))
-        body  = car.get("body_type", "")
+        body  = fmt_body_type(car.get("body_type", ""))
         doors = car.get("doors", "")
         b = ""
         if seats: b += f'<span class="badge">{seats} Seat</span>'

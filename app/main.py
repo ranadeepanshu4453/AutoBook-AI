@@ -6,7 +6,7 @@ from app.db.mongo import mongo_db
 from app.db.mysql_db import mysql_db
 from app.services.semantic_intent_service import semantic_intent_service
 from app.learning.retraining_scheduler import retrain_loop
-from app.api.v1.feedback import router as feedback_router
+from app.api.v1.endpoints.feedback import router as feedback_router
 from app.ollama.ollama_service import ollama_service
 
 
@@ -65,7 +65,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="AI Car Booking Microservice", lifespan=lifespan)
 
 app.include_router(v1_router, prefix="/api/v1")
-app.include_router(feedback_router, prefix="/api/v1")  # learning feedback endpoints
 
 @app.get("/")
 async def root():

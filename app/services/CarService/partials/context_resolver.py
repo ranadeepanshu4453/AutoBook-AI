@@ -66,6 +66,12 @@ def resolve(
 
         # Genuine topic switch
         logger.info(f"Topic switch detected: {previous_intent} → {detected_intent}")
+        
+        # CHECK_BOOKING_STATUS is a stateless side-query — preserve the
+        # in-progress booking context so the user can return to it afterward.
+        if detected_intent == IntentType.CHECK_BOOKING_STATUS and previous_intent in CAR_INTENTS:
+            return detected_intent, confidence, previous_entities
+        
         return detected_intent, confidence, initial_entities
 
     # ── Rule 4: Low confidence, active CAR flow, has entities ─────────────────

@@ -163,13 +163,14 @@ async def run(
     # ── 6. Show car options (first time only) ─────────────────────────────────
     if "options_shown" not in merged_entities:
         merged_entities["options_shown"] = True
+        filtered_data=_apply_filters(available_inventory,merged_entities)
         return make_response(
             intent=detected_intent, confidence=confidence,
             entities=merged_entities, missing_entities=[],
             next_stage=BookingStages.SHOWING_OPTIONS,
             response_message=car_options_message(available_inventory, merged_entities["booking_dates"]),
             raw_query=raw_query,
-            data=available_inventory,
+            data=filtered_data,
             available_inventory=available_inventory,
         )
     # ── Auto-trigger adjustment when filter entities arrive after options shown ──

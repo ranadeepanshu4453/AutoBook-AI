@@ -140,6 +140,29 @@ INTENT_EXAMPLES = {
         "fleet availability"
     ],
 
+    IntentType.CHECK_BOOKING_STATUS: [
+        "what is my booking status",
+        "show my current bookings",
+        "do I have any active bookings",
+        "check my booking",
+        "what bookings do I have",
+        "show active rentals",
+        "current booking status",
+        "is my car still booked",
+        "what's the status of my reservation",
+        "show my reservations",
+        "any ongoing bookings",
+        "list my active bookings",
+        "check my rental status",
+        "what car did I book",
+        "show me my booking details",
+        "my current rentals",
+        "status of my car booking",
+        "do I have a car booked right now",
+        "check active reservations",
+        "show all current bookings",
+    ],
+
     IntentType.CUSTOMER_FIND: [
 
         "find customer",

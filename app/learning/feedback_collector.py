@@ -33,9 +33,9 @@ class FeedbackCollector:
         doc = {
             "session_id":         session_id,
             "query":              query,
-            "detected_intent":    detected_intent.value if detected_intent else None,
+            "detected_intent":    detected_intent.value if hasattr(detected_intent, "value") else detected_intent,
             "confidence":         round(confidence, 4),
-            "stage_before":       stage_before.value if stage_before else None,
+            "stage_before":       stage_before.value if hasattr(stage_before, "value") else stage_before,
             "entities_extracted": list(entities_extracted.keys()),
             "signal_type":        signal_type,
             "correct_intent":     correct_intent,

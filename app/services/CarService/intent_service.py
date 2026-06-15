@@ -17,9 +17,13 @@ from app.helpers.extraction_helper import clean_query
 from app.services.CarService.partials.fallback_strategies import fallback_handler
 from app.ollama.ollama_service import ollama_service
 from app.core.exceptions import IntentDetectionException
+from app.services.CarService import booking_status_flow
+
 
 CAR_INTENTS   = (IntentType.CAR_SEARCH, IntentType.CAR_BOOKING)
 GREET_INTENTS = (IntentType.GREETING, IntentType.HELP)
+STATUS_INTENTS = (IntentType.CHECK_BOOKING_STATUS,)
+
 
 _IRRELEVANT_RESPONSES = [
     "I'm a car rental assistant — I can help you search for cars, check bookings, or find payment info. What would you like to do?",
@@ -163,6 +167,7 @@ class IntentService:
 
         # ── Yes/No handling for stages that expect it ─────────────────────────
         if prev_stage in _STAGE_YES_NO_MAP and (cleaned in _YES_WORDS or cleaned in _NO_WORDS):
+            logger.info('testing for yes no')
             is_yes      = cleaned in _YES_WORDS
             entity_key  = _STAGE_YES_NO_MAP[prev_stage]
 
@@ -176,12 +181,19 @@ class IntentService:
 
             # For filter stages (transmission/fuel): "no"/"skip" means skip that filter
             if not is_yes:
+                logger.info('testing for yes no')
                 merged = dict(previous_entities)
                 merged.pop(entity_key, None)
-                merged[f"skip_{entity_key}"] = True
+                skip_key = (
+                    "skip_seating_capacity"
+                    if prev_stage == BookingStages.COLLECTING_SEATING
+                    else f"skip_{entity_key}"
+                )
+                merged[skip_key] = True
                 return IntentType.CAR_BOOKING, 0.99, merged
             # "yes" for a filter stage is ambiguous (yes to what?) — fall through
             # and let the flow re-ask
+            return IntentType.CAR_BOOKING, 0.99, dict(previous_entities)
 
         # ── Car selection by list number ──────────────────────────────────────
         selected = self._resolve_car_selection(cleaned, available_inventory)
@@ -401,7 +413,7 @@ class IntentService:
                     available_inventory=available_inventory,
                 )
                 # Tag context so next turn can detect correction pattern
-                response.metadata = {"last_response_was_unknown": True, "last_query": cleaned}
+                # response.metadata = {"last_response_was_unknown": True, "last_query": cleaned}
                 return response
 
         # 12. Route to booking flow
@@ -411,6 +423,16 @@ class IntentService:
                 confidence=confidence,
                 merged_entities=merged_entities,
                 available_inventory=available_inventory,
+                raw_query=query,
+                context=context,
+            )
+            
+        # 12b. Route to booking status flow — stateless, doesn't touch booking state
+        if detected_intent in STATUS_INTENTS:
+            return await booking_status_flow.run(
+                detected_intent=detected_intent,
+                confidence=confidence,
+                merged_entities=merged_entities,
                 raw_query=query,
                 context=context,
             )

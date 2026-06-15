@@ -4,6 +4,7 @@ class IntentType(str, Enum):
     CAR_BOOKING = "car_booking"
     CAR_SEARCH = "car_search"
     INVENTORY_FIND = "inventory_find"
+    CHECK_BOOKING_STATUS = "check_booking_status"
     CUSTOMER_FIND = "customer_find"
     INVOICE_FIND = "invoice_find"
     PAYMENT_FIND = "payment_find"

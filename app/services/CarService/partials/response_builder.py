@@ -35,6 +35,18 @@ def car_options_message(inventory: list[dict], booking_dates: str) -> str:
         f"{seating_note}"
         f"Would you like any of these, or shall I filter by seating, transmission, or fuel type?"
     )
+    
+def booking_status_message(bookings: list[dict]) -> str:
+    if not bookings:
+        return "You don't have any active bookings right now."
+
+    lines = [f"You have {len(bookings)} active booking(s):\n"]
+    for b in bookings:
+        car_name = f"{b['carMake']} {b['carModel']}"
+        dates = f"{b['fromDate']} → {b['toDate']}"
+        lines.append(f"• {car_name} ({dates})")
+
+    return "\n".join(lines)
 
 
 def filtered_options_message(inventory: list[dict], filters: dict) -> str:
@@ -108,6 +120,17 @@ def format_cars_for_display(inventory: list[dict]) -> list[dict]:
 
     return results
 
+def format_bookings_for_display(bookings: list[dict]) -> list[dict]:
+    results = []
+    for b in bookings:
+        results.append({
+            "id":           b["id"],
+            "display_name": f"{b['carMake']} {b['carModel']}",
+            "from_date":    b["fromDate"],
+            "to_date":      b["toDate"],
+            "status":       b["bookingStatus"],
+        })
+    return results
 
 def make_response(
     intent, confidence, entities, missing_entities,

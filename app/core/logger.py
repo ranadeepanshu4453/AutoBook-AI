@@ -1,25 +1,45 @@
 import logging
+import os
 import sys
+from logging.handlers import RotatingFileHandler
 
-# Use a named logger instead of basicConfig to avoid infinite reload loops
-# basicConfig configures the root logger globally, which causes uvicorn's
-# file watcher to detect log file changes and trigger endless reloads.
+LOGGER_NAME = "AI_Car_Booking_Chatbot"
 
-logger = logging.getLogger("AI_Car_Booking_Chatbot")
-logger.setLevel(logging.INFO)
 
-# Avoid adding duplicate handlers if module is re-imported
-if not logger.handlers:
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+def logger() -> logging.Logger:
+    logger = logging.getLogger(LOGGER_NAME)
 
+    if logger.handlers:
+        return logger
+
+    logger.setLevel(logging.INFO)
+
+    formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+    )
+
+    # Console output
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
-
-    file_handler = logging.FileHandler("app.log")
-    file_handler.setFormatter(formatter)
-
     logger.addHandler(console_handler)
+
+    # File logging
+    log_dir = "logs"
+    os.makedirs(log_dir, exist_ok=True)
+
+    file_handler = RotatingFileHandler(
+        filename=os.path.join(log_dir, "app.log"),
+        maxBytes=10 * 1024 * 1024,  # 10 MB
+        backupCount=10,
+        encoding="utf-8"
+    )
+
+    file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
-# Prevent log records from bubbling up to the root logger
-logger.propagate = False
+    logger.propagate = False
+
+    return logger
+
+
+logger = logger()

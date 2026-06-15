@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from app.learning.feedback_collector import feedback_collector
 from app.learning.example_store import example_store
 
-router = APIRouter(prefix="/feedback", tags=["feedback"])
+router = APIRouter(prefix="/feedback", tags=["Feedback"])
 
 
 class FeedbackPayload(BaseModel):
@@ -11,13 +11,13 @@ class FeedbackPayload(BaseModel):
     query:           str
     detected_intent: str
     confidence:      float
-    signal:          str           # "positive" | "negative"
+    signal:          str            # "positive" | "negative"
     correct_intent:  str | None = None
 
 
 class ReviewAction(BaseModel):
     candidate_id: str
-    action:       str   # "approve" | "reject"
+    action:       str               # "approve" | "reject"
 
 
 @router.post("/submit")

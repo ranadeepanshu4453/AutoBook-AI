@@ -1,15 +1,26 @@
-fastapi
-uvicorn
-mysql-connector-python
-motor
+# Web framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# Database
+aiomysql==0.2.0
+motor==3.6.0
+
+# AI / ML
+sentence-transformers==5.5.1
+scikit-learn==1.5.2
+numpy==1.26.4
+
+# Utilities
+python-dotenv==1.0.1
+dateparser==1.2.0
+pandas==2.2.3
+
+# Vector
 chromadb
-sentence-transformers
-pandas
-python-dotenv
-dateparser
-sentence-transformers 
-scikit-learn 
-numpy
-aiomysql
-# streamlit
-#ollama
+
+# Removed — not needed in production
+# mysql-connector-python  (using aiomysql instead, don't need both)
+# chromadb                (not used in current codebase)
+# streamlit               (frontend only, separate deployment)
+# ollama                  (commented out already)
