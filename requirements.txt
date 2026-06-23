@@ -27,4 +27,14 @@ httpx
 # mysql-connector-python  (using aiomysql instead, don't need both)
 # chromadb                (not used in current codebase)
 # streamlit               (frontend only, separate deployment)
-# ollama                  (commented out already)
+ollama                  #(commented out already)
+# source venv/bin/activate
+# ai model create folder and run cmd to install it 
+#mkdir AI_models
+# pip install sentence-transformers
+# python -c "
+# from sentence_transformers import SentenceTransformer
+# model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+# model.save('AI_models/all-MiniLM-L6-v2')
+# "
+ 

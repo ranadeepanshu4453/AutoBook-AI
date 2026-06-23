@@ -104,6 +104,9 @@ INTENT_EXAMPLES = {
 
     "book a aussie trailers heavy duty for me",
 
+    "book me car",
+
+    "book me another car",
 ],
 
     IntentType.CAR_SEARCH: [
@@ -313,8 +316,6 @@ INTENT_EXAMPLES = {
         "hola",
         "what's up",
         "hey bot"
-    
-    "he",
 ],
 
     IntentType.HELP: [

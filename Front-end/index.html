@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RentGenie · AI car rental</title>
+
+    <!-- Tailwind + Inter + FontAwesome -->
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+    <style>
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        body {
+            background: #f0f4fb;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .glass-hero {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 0 30px 60px -20px rgba(0, 20, 40, 0.2);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 26px -8px rgba(0, 32, 64, 0.06);
+            transition: all 0.25s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-8px);
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 20px 40px -12px rgba(37, 99, 235, 0.15);
+        }
+
+        .chat-toggle {
+            position: fixed;
+            bottom: 2rem;
+            right: 1.5rem;
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #9db1db, #ffffff);
+            color: white;
+            font-size: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 14px 28px -6px rgba(37, 99, 235, 0.4);
+            border: none;
+            transition: all 0.2s ease;
+            z-index: 999;
+        }
+        .chat-toggle:hover {
+            transform: scale(1.05) rotate(-2deg);
+            box-shadow: 0 18px 34px -8px #2563eb60;
+        }
+
+        .hero-bg {
+            background: radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.04) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(37, 99, 235, 0.04) 0%, transparent 50%);
+        }
+
+        .stat-number {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #1e3a6f, #2563eb);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            line-height: 1.2;
+        }
+
+        .feature-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #2563eb;
+            flex-shrink: 0;
+        }
+
+        @keyframes fadeUp {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fade-up {
+            animation: fadeUp 0.6s ease forwards;
+        }
+        .delay-1 {
+            animation-delay: 0.1s;
+        }
+        .delay-2 {
+            animation-delay: 0.2s;
+        }
+        .delay-3 {
+            animation-delay: 0.3s;
+        }
+        .delay-4 {
+            animation-delay: 0.4s;
+        }
+
+        @media (max-width: 640px) {
+            .chat-toggle {
+                width: 58px;
+                height: 58px;
+                font-size: 26px;
+                bottom: 1.2rem;
+                right: 1.2rem;
+            }
+            .stat-number {
+                font-size: 1.6rem;
+            }
+        }
+
+        /* CHAT WIDGET */
+        .chat-widget {
+            position: fixed;
+            right: 1.5rem;
+            bottom: 7rem;
+            width: 720px;
+            max-width: calc(100vw - 2rem);
+            height: 700px;
+            max-height: calc(100vh - 8rem);
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 30px 70px -20px rgba(0, 20, 40, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.02);
+            display: none;
+            overflow: hidden;
+            z-index: 1000;
+        }
+        .chat-widget.active {
+            display: flex;
+        }
+
+        .chat-grid {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            height: 100%;
+            width: 100%;
+            background: #fafbfc;
+            transition: grid-template-columns 0.3s ease;
+        }
+        .chat-grid.left-collapsed {
+            grid-template-columns: 0px 1fr;
+        }
+
+        .left-panel {
+            background: #f8f9fc;
+            border-right: 1px solid #eaedf2;
+            padding: 1.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transition: all 0.3s ease;
+        }
+        .left-collapsed .left-panel {
+            padding: 0;
+            border-right: none;
+            opacity: 0;
+            pointer-events: none;
+            width: 0;
+        }
+        .left-panel .logo {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #0b2b5c;
+            padding: 0 0.6rem 1rem 0.6rem;
+            border-bottom: 1px solid #e9edf4;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        .left-panel .logo i {
+            color: #2563eb;
+            font-size: 1.2rem;
+        }
+        .search-box {
+            margin: 0.8rem 0;
+            padding: 0.4rem 0.8rem;
+            border-radius: 30px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            font-size: 0.7rem;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .search-box i {
+            color: #94a3b8;
+            font-size: 0.7rem;
+        }
+        .nav-section {
+            margin-top: 0.8rem;
+        }
+        .nav-section .label {
+            font-size: 0.55rem;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0.4rem 0.6rem;
+        }
+        .nav-item {
+            padding: 0.4rem 0.6rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.1s;
+            cursor: default;
+            white-space: nowrap;
+        }
+        .nav-item:hover {
+            background: #eef2f6;
+        }
+        .nav-item i {
+            color: #64748b;
+            width: 16px;
+            font-size: 0.8rem;
+        }
+        .nav-item.active {
+            background: #e0e7ff;
+            color: #2563eb;
+            font-weight: 500;
+        }
+        .nav-item.active i {
+            color: #2563eb;
+        }
+        .badge-count {
+            margin-left: auto;
+            background: #e2e8f0;
+            padding: 0 8px;
+            border-radius: 20px;
+            font-size: 0.6rem;
+            color: #475569;
+        }
+        .nav-divider {
+            border-top: 1px solid #e9edf4;
+            margin: 0.6rem 0;
+        }
+
+        .middle-panel {
+            background: white;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 280px;
+        }
+        .middle-header {
+            display: flex;
+            align-items: center;
+            padding: 0.4rem 0.8rem;
+            border-bottom: 1px solid #eaedf2;
+            background: #fafbfc;
+            flex-shrink: 0;
+            gap: 6px;
+        }
+        .middle-header .toggle-btn {
+            background: none;
+            border: none;
+            font-size: 1rem;
+            color: #64748b;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 6px;
+            transition: background 0.15s;
+        }
+        .middle-header .toggle-btn:hover {
+            background: #eef2f6;
+            color: #2563eb;
+        }
+        .middle-title {
+            flex: 1;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #0b2b5c;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 4px;
+        }
+        .middle-title i {
+            color: #2563eb;
+        }
+
+        .message-list {
+            flex: 0 0 auto;
+            max-height: 100px;
+            overflow-y: auto;
+            padding: 0.3rem 0.8rem;
+            border-bottom: 1px solid #eaedf2;
+            background: #fafbfc;
+        }
+        .msg-item {
+            padding: 0.3rem 0.6rem;
+            border-radius: 8px;
+            margin-bottom: 0.1rem;
+            transition: background 0.1s;
+            cursor: default;
+        }
+        .msg-item:hover {
+            background: #f1f5f9;
+        }
+        .msg-item .title {
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .msg-item .title i {
+            color: #2563eb;
+            font-size: 0.65rem;
+        }
+        .msg-item .preview {
+            font-size: 0.65rem;
+            color: #64748b;
+            margin-top: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .msg-item .time {
+            font-size: 0.55rem;
+            color: #94a3b8;
+            margin-left: auto;
+        }
+        .msg-item .meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .chat-stream {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.6rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            background: #ffffff;
+        }
+        .chat-bubble {
+            padding: 0.6rem 0.9rem;
+            border-radius: 16px;
+            max-width: 92%;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            animation: slideUp 0.2s ease;
+            word-break: break-word;
+        }
+        .chat-bubble.bot {
+            background: #f1f5f9;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            color: #0b2b5c;
+        }
+        .chat-bubble.user {
+            background: #2563eb;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-bubble .stage-chip {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1e3a6f;
+            border-radius: 12px;
+            padding: 0 8px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .date-picker-inline {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-top: 4px;
+            align-self: flex-start;
+            width: 100%;
+        }
+        .date-picker-inline .dp-label {
+            font-size: 0.55rem;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .date-picker-inline .dp-row {
+            display: flex;
+            gap: 6px;
+        }
+        .date-picker-inline .dp-field {
+            flex: 1;
+        }
+        .date-picker-inline .dp-field label {
+            font-size: 0.55rem;
+            color: #64748b;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .date-picker-inline .dp-field input[type="date"] {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            color: #0f172a;
+            font-size: 0.65rem;
+            font-family: inherit;
+            outline: none;
+        }
+        .date-picker-inline .dp-field input[type="date"]:focus {
+            border-color: #2563eb;
+        }
+        .date-picker-inline .search-btn {
+            width: 100%;
+            margin-top: 6px;
+            padding: 5px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.12s;
+        }
+        .date-picker-inline .search-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .summary-inline {
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 8px 12px;
+            margin-top: 4px;
+            align-self: flex-start;
+            width: 100%;
+        }
+        .summary-inline .sh {
+            font-size: 0.55rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, .35);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .summary-inline .srow {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, .05);
+        }
+        .summary-inline .srow:last-child {
+            border: none;
+        }
+        .summary-inline .sk {
+            color: rgba(255, 255, 255, .45);
+        }
+        .summary-inline .sv {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .pay-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: #1a1a1a;
+            color: white;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: opacity 0.12s;
+            align-self: flex-start;
+            margin-top: 4px;
+        }
+        .pay-inline:hover {
+            opacity: 0.8;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 4px;
+            padding: 0.2rem 1rem;
+            color: #64748b;
+            font-size: 0.7rem;
+            flex-shrink: 0;
+        }
+        .typing-indicator.show {
+            display: flex;
+        }
+        .typing-indicator span {
+            width: 6px;
+            height: 6px;
+            background: #94a3b8;
+            border-radius: 50%;
+            animation: pulse 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes pulse {
+            0%,
+            60%,
+            100% {
+                opacity: 0.25;
+                transform: scale(0.9);
+            }
+            30% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+        }
+
+        .ask-box {
+            padding: 0.5rem 1.2rem;
+            border-top: 1px solid #eaedf2;
+            background: #fafbfc;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        .ask-box input {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            font-size: 0.8rem;
+            outline: none;
+        }
+        .ask-box input:focus {
+            border-color: #2563eb;
+        }
+        .ask-box button {
+            background: none;
+            border: none;
+            color: #2563eb;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: color 0.1s;
+        }
+        .ask-box button:hover {
+            color: #1d4ed8;
+        }
+        .ask-box button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Car grid styles */
+        .car-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+            width: 100%;
+        }
+        .car-grid .car-card {
+            background: white;
+            border-radius: 12px;
+            padding: 0.5rem 0.6rem;
+            border: 1px solid #eaedf2;
+            transition: all 0.15s;
+            display: flex;
+            flex-direction: column;
+        }
+        .car-grid .car-card:hover {
+            border-color: #2563eb;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, .08);
+        }
+        .car-grid .car-name {
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .car-grid .car-details {
+            font-size: 0.55rem;
+            color: #64748b;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            margin: 2px 0;
+        }
+        .car-grid .car-details span {
+            background: #f1f5f9;
+            padding: 0 5px;
+            border-radius: 4px;
+        }
+        .car-grid .book-now {
+            margin-top: auto;
+            padding: 3px 0;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.6rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.12s;
+            width: 100%;
+        }
+        .car-grid .book-now:hover {
+            background: #1d4ed8;
+        }
+
+        /* Active booking card */
+        .active-booking-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+            width: 100%;
+        }
+        .active-booking-grid .active-card {
+            background: #f0f7ff;
+            border-radius: 12px;
+            padding: 0.5rem 0.6rem;
+            border: 1px solid #b3d4ff;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .active-booking-grid .active-card::before {
+            content: "✓ ACTIVE";
+            position: absolute;
+            top: -6px;
+            right: 6px;
+            background: #22c55e;
+            color: white;
+            font-size: 0.45rem;
+            font-weight: 700;
+            padding: 0 6px;
+            border-radius: 10px;
+            letter-spacing: 0.3px;
+        }
+        .active-booking-grid .car-name {
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .active-booking-grid .car-details {
+            font-size: 0.55rem;
+            color: #64748b;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            margin: 2px 0;
+        }
+        .active-booking-grid .car-details span {
+            background: #e6f0ff;
+            padding: 0 5px;
+            border-radius: 4px;
+        }
+        .active-booking-grid .booking-status {
+            font-size: 0.55rem;
+            color: #2563eb;
+            font-weight: 500;
+            margin-top: 2px;
+            border-top: 1px dashed #b3d4ff;
+            padding-top: 3px;
+        }
+
+        .grid-header {
+            grid-column: 1 / -1;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #2563eb;
+            margin-bottom: 4px;
+            margin-top: 4px;
+        }
+        .grid-header:first-of-type {
+            margin-top: 0;
+        }
+
+        .no-results-placeholder {
+            display: none !important;
+        }
+
+        @media (max-width: 720px) {
+            .chat-widget {
+                right: 0.8rem;
+                bottom: 6rem;
+                width: calc(100vw - 1.6rem);
+                height: 75vh;
+                border-radius: 24px;
+            }
+            .chat-grid {
+                grid-template-columns: 1fr;
+            }
+            .left-panel {
+                display: none;
+            }
+            .chat-grid.left-collapsed {
+                grid-template-columns: 1fr;
+            }
+            .car-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+            .active-booking-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+        }
+        @keyframes slideUp {
+            0% {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- MAIN LANDING -->
+    <main class="flex-1 flex items-center justify-center p-4 md:p-8 hero-bg">
+        <div class="w-full max-w-6xl mx-auto glass-hero rounded-[3rem] px-6 py-10 md:px-12 md:py-16 transition-all">
+            <section class="text-center relative">
+                <div class="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm px-5 py-2 rounded-full text-sm font-medium text-[#1e3a6f] border border-white/80 shadow-sm mb-6 animate-fade-up">
+                    <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                    <i class="fas fa-bolt text-blue-600"></i> AI-powered · book in seconds
+                </div>
+                <h1 class="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight flex flex-wrap items-center justify-center gap-3 animate-fade-up delay-1">
+                    <span class="bg-gradient-to-r from-[#0b2b5c] via-[#1d4ed8] to-[#2563eb] bg-clip-text text-transparent">RentGenie</span>
+                </h1>
+                <p class="mt-4 text-xl md:text-2xl text-slate-700/90 font-medium inline-block bg-white/50 backdrop-blur-sm px-8 py-2.5 rounded-full border border-white/70 animate-fade-up delay-2">
+                    Find &amp; book your perfect car — instantly
+                </p>
+                <div class="mt-4 flex items-center justify-center gap-2 text-sm text-slate-600 flex-wrap animate-fade-up delay-2">
+                    <span class="bg-[#eef2ff] px-4 py-1.5 rounded-full border border-[#dbeafe] flex items-center gap-1.5">
+                        <i class="fas fa-comment-dots text-blue-500"></i> conversational booking
+                    </span>
+                    <span class="bg-[#eef2ff] px-4 py-1.5 rounded-full border border-[#dbeafe] flex items-center gap-1.5">
+                        <i class="fas fa-clock text-blue-500"></i> 24/7 support
+                    </span>
+                    <span class="bg-[#eef2ff] px-4 py-1.5 rounded-full border border-[#dbeafe] flex items-center gap-1.5">
+                        <i class="fas fa-shield-alt text-blue-500"></i> secure payments
+                    </span>
+                </div>
+                <div class="mt-8 flex flex-wrap items-center justify-center gap-4 animate-fade-up delay-3">
+                    <button onclick="document.getElementById('toggleChatBtn').click()" class="px-8 py-3.5 bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] text-white font-semibold rounded-2xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:scale-105 flex items-center gap-2 text-lg">
+                        <i class="fas fa-comment"></i> Start Booking
+                    </button>
+                    <button class="px-8 py-3.5 bg-white/80 backdrop-blur-sm text-[#1e3a6f] font-semibold rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all hover:scale-105 flex items-center gap-2 text-lg">
+                        <i class="fas fa-play-circle text-blue-600"></i> See How It Works
+                    </button>
+                </div>
+                <div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto animate-fade-up delay-4">
+                    <div class="glass-card rounded-2xl p-4 text-center"><div class="stat-number">50K+</div><div class="text-xs text-slate-500 font-medium mt-1">Bookings Made</div></div>
+                    <div class="glass-card rounded-2xl p-4 text-center"><div class="stat-number">4.9★</div><div class="text-xs text-slate-500 font-medium mt-1">Average Rating</div></div>
+                    <div class="glass-card rounded-2xl p-4 text-center"><div class="stat-number">300+</div><div class="text-xs text-slate-500 font-medium mt-1">Car Models</div></div>
+                    <div class="glass-card rounded-2xl p-4 text-center"><div class="stat-number">24/7</div><div class="text-xs text-slate-500 font-medium mt-1">AI Support</div></div>
+                </div>
+            </section>
+            <section class="mt-16">
+                <h2 class="text-2xl md:text-3xl font-bold text-[#0b2b5c] text-center mb-8">Everything you need to book with confidence</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                    <div class="glass-card rounded-2xl p-6 text-left flex gap-4 items-start"><div class="feature-icon"><i class="fas fa-brain"></i></div><div><h3 class="font-bold text-[#0b2b5c] text-lg">AI-Powered Booking</h3><p class="text-slate-600 text-sm mt-1 leading-relaxed">Just tell us what you need — our AI handles the search, filters, and booking flow.</p></div></div>
+                    <div class="glass-card rounded-2xl p-6 text-left flex gap-4 items-start"><div class="feature-icon"><i class="fas fa-bolt"></i></div><div><h3 class="font-bold text-[#0b2b5c] text-lg">Instant Payments</h3><p class="text-slate-600 text-sm mt-1 leading-relaxed">Secure payment links generated instantly. Pay in one tap with zero friction.</p></div></div>
+                    <div class="glass-card rounded-2xl p-6 text-left flex gap-4 items-start"><div class="feature-icon"><i class="fas fa-headset"></i></div><div><h3 class="font-bold text-[#0b2b5c] text-lg">24/7 Concierge</h3><p class="text-slate-600 text-sm mt-1 leading-relaxed">Human-like AI support available around the clock. Never wait for help again.</p></div></div>
+                    <div class="glass-card rounded-2xl p-6 text-left flex gap-4 items-start"><div class="feature-icon"><i class="fas fa-calendar-check"></i></div><div><h3 class="font-bold text-[#0b2b5c] text-lg">Flexible Dates</h3><p class="text-slate-600 text-sm mt-1 leading-relaxed">Pickup and drop-off dates are easy to adjust. Modify your booking anytime.</p></div></div>
+                    <div class="glass-card rounded-2xl p-6 text-left flex gap-4 items-start"><div class="feature-icon"><i class="fas fa-shield-alt"></i></div><div><h3 class="font-bold text-[#0b2b5c] text-lg">Secure &amp; Verified</h3><p class="text-slate-600 text-sm mt-1 leading-relaxed">All cars are verified. Payments are encrypted and fully protected.</p></div></div>
+                    <div class="glass-card rounded-2xl p-6 text-left flex gap-4 items-start"><div class="feature-icon"><i class="fas fa-route"></i></div><div><h3 class="font-bold text-[#0b2b5c] text-lg">Real-Time Availability</h3><p class="text-slate-600 text-sm mt-1 leading-relaxed">Live inventory updates so you always see what's actually available.</p></div></div>
+                </div>
+            </section>
+            <div class="mt-16 pt-6 border-t border-slate-200/50 text-center text-xs text-slate-400 flex items-center justify-center gap-4 flex-wrap">
+                <span><i class="fas fa-code"></i> backend · <code class="bg-white/60 px-2 py-0.5 rounded-md text-slate-600 font-mono">/api/v1/intent/analyze</code></span>
+                <span class="hidden sm:inline">·</span>
+                <span><i class="far fa-comment"></i> powered by <span class="font-medium text-slate-500">RentGenie AI</span></span>
+                <span class="hidden sm:inline">·</span>
+                <span><i class="far fa-copyright"></i> 2026</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- CHAT TOGGLE -->
+    <button class="chat-toggle" id="toggleChatBtn" aria-label="Open chat assistant">
+        <img src="happy.png" alt="Chatbot" class="chat-icon p-1" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
+    </button>
+
+    <!-- CHAT WIDGET CONTAINER -->
+    <div id="chatWidgetContainer"></div>
+
+    <script>
+        (function loadChatWidget() {
+            if (document.getElementById('chatWidget')) return;
+
+            const widgetHTML = `
+            <div class="chat-widget" id="chatWidget">
+              <div class="chat-grid">
+
+                <!-- LEFT PANEL -->
+                <div class="left-panel" id="leftPanel">
+                  <div class="logo"><i class="fas fa-robot"></i> RentGenie</div>
+                  <div class="search-box"><i class="fas fa-search"></i> Search for help</div>
+                  <div class="nav-section">
+                    <div class="label">Collections</div>
+                    <div class="nav-item active"><i class="fas fa-question-circle"></i> Atlas FAQ <span class="badge-count">43</span></div>
+                    <div class="nav-item"><i class="fas fa-shield-alt"></i> Security <span class="badge-count">23</span></div>
+                    <div class="nav-item"><i class="fas fa-credit-card"></i> Billing <span class="badge-count">5</span></div>
+                    <div class="nav-item"><i class="fas fa-rocket"></i> Startups</div>
+                  </div>
+                  <div class="nav-divider"></div>
+                  <div class="nav-section" style="margin-top:auto;">
+                    <div class="nav-item"><i class="fas fa-home"></i> Home</div>
+                    <div class="nav-item"><i class="fas fa-envelope"></i> Messages <span class="badge-count">3</span></div>
+                    <div class="nav-item"><i class="fas fa-life-ring"></i> Help</div>
+                  </div>
+                </div>
+
+                <!-- MIDDLE PANEL -->
+                <div class="middle-panel" id="middlePanel">
+                  <div class="middle-header">
+                    <button class="toggle-btn" id="toggleLeftBtn" aria-label="Toggle left panel">
+                      <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="middle-title"><i class="fas fa-comment-dots"></i> Messages</span>
+                  </div>
+
+                  <div class="message-list" id="messageList">
+                    <div class="msg-item"><div class="meta"><span class="title"><i class="fas fa-calendar-check"></i> Booking Request</span><span class="time">2h</span></div><div class="preview">I need an SUV for this weekend</div></div>
+                    <div class="msg-item"><div class="meta"><span class="title"><i class="fas fa-car"></i> Car Options</span><span class="time">1d</span></div><div class="preview">Here are the available cars matching your criteria</div></div>
+                    <div class="msg-item"><div class="meta"><span class="title"><i class="fas fa-credit-card"></i> Payment</span><span class="time">3d</span></div><div class="preview">Your booking is confirmed! Complete payment here</div></div>
+                    <div class="msg-item"><div class="meta"><span class="title"><i class="fas fa-robot"></i> MBot</span><span class="time">1w</span></div><div class="preview">How can I help you get the most out of your …</div></div>
+                  </div>
+
+                  <div class="chat-stream" id="chatStream">
+                    <div class="chat-bubble bot">
+                      <span class="stage-chip">💬 welcome</span><br>
+                      <i class="fas fa-car text-blue-500 mr-1"></i> Hey! I'm your RentGenie.<br>
+                      <strong>Type <em>yes</em> to get started!</strong>
+                    </div>
+                  </div>
+
+                  <div class="typing-indicator" id="typingDots">
+                    <span></span><span></span><span></span>
+                    <span class="ml-2 text-slate-500 text-xs mb-10">assistant thinking</span>
+                  </div>
+
+                  <div class="ask-box">
+                    <input type="text" id="chatInput" placeholder="Ask a question…" autocomplete="off" />
+                    <button id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            `;
+
+            if (!document.getElementById('widgetStyles')) {
+                const style = document.createElement('style');
+                style.id = 'widgetStyles';
+                style.textContent = `
+              .chat-grid { grid-template-columns: 240px 1fr; }
+              .chat-grid.left-collapsed { grid-template-columns: 0px 1fr; }
+              @media (max-width: 720px) {
+                .chat-grid { grid-template-columns: 1fr; }
+                .left-panel { display: none; }
+              }
+            `;
+                document.head.appendChild(style);
+            }
+
+            const container = document.getElementById('chatWidgetContainer');
+            container.innerHTML = widgetHTML;
+            
+            // ── CHAT LOGIC ──
+            (function initChat() {
+                const API_URL = 'https://copier-sequel-gestation.ngrok-free.dev/api/v1/intent/analyze';
+                const USER_ID = 12;
+
+                const FUEL_MAP = { d: 'Diesel', p: 'Petrol', b: 'Hybrid', e: 'Electric', h: 'Hydrogen' };
+                const TRANS_MAP = { '1': 'Automatic', '2': 'Manual', automatic: 'Automatic', manual: 'Manual' };
+                const BODY_MAP = { s: 'Sedan', '1': 'Hatchback', '2': 'SUV', '3': 'Coupe', '4': 'Sports Car',
+                    '5': 'Station Wagon', '6': 'Convertible', '7': 'Minivan', '8': 'Pick Up Truck',
+                    '9': 'Van', '10': 'Prime Mover', '11': 'Scooter'
+                };
+                const STAGE_MAP = {
+                    collecting_dates: '📅 Dates',
+                    showing_options: '🚗 Options',
+                    collecting_seating: '💺 Seating',
+                    collecting_transmission: '⚙️ Transmission',
+                    collecting_fuel_type: '⛽ Fuel',
+                    collecting_car_preference: '🔍 Pick Car',
+                    confirm_booking: '✅ Confirm',
+                    collecting_phone: '📱 Phone',
+                    collecting_full_name: '👤 Name',
+                    collecting_email: '✉️ Email',
+                    collecting_licence_number: '🪪 Licence',
+                    collecting_licence_expiry: '📆 Expiry',
+                    payment: '💳 Payment'
+                };
+                const YES_WORDS = new Set(['yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'proceed', 'start', 'yup', 'y']);
+
+                let sessionId = 'sess-' + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random()
+                    .toString(36).slice(2, 8));
+                let started = false;
+                let summaryShown = false;
+
+                const widget = document.getElementById('chatWidget');
+                const chatStream = document.getElementById('chatStream');
+                const typingDots = document.getElementById('typingDots');
+                const input = document.getElementById('chatInput');
+                const sendBtn = document.getElementById('sendBtn');
+                const toggleBtn = document.getElementById('toggleChatBtn');
+
+                const toggleLeftBtn = document.getElementById('toggleLeftBtn');
+                const grid = document.querySelector('.chat-grid');
+                let leftOpen = false;
+
+                function updateGridClass() {
+                    grid.classList.remove('left-collapsed');
+                    if (!leftOpen) grid.classList.add('left-collapsed');
+                }
+
+                toggleLeftBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    leftOpen = !leftOpen;
+                    updateGridClass();
+                });
+
+                leftOpen = false;
+                updateGridClass();
+
+                function esc(s) {
+                    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                }
+
+                function fmt(map, val) {
+                    return val ? (map[String(val).toLowerCase()] || String(val)) : '';
+                }
+
+                function scrollBottom() {
+                    chatStream.scrollTop = chatStream.scrollHeight;
+                }
+
+                function setDisabled(val) {
+                    input.disabled = val;
+                    sendBtn.disabled = val;
+                }
+
+                function todayISO() {
+                    return new Date().toISOString().split('T')[0];
+                }
+
+                function nextDayISO(iso) {
+                    const d = new Date(iso);
+                    d.setDate(d.getDate() + 1);
+                    return d.toISOString().split('T')[0];
+                }
+
+                function fmtDateDisplay(iso) {
+                    if (!iso) return '';
+                    const [y, m, d] = iso.split('-');
+                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    return `${parseInt(d)} ${months[parseInt(m) - 1]}`;
+                }
+
+                // FIX: Better detection of active bookings using response message
+                function isActiveBooking(car, stage, responseMessage) {
+                    // First check if the car appears in the response message with active booking indicators
+                    if (responseMessage) {
+                        const carName = car.display_name || car.name || '';
+                        if (carName && responseMessage.includes(carName)) {
+                            // Check if the response mentions active booking keywords
+                            if (responseMessage.includes('active booking') ||
+                                responseMessage.includes('Ongoing') ||
+                                responseMessage.includes('→') ||
+                                responseMessage.includes('bookings')) {
+                                return true;
+                            }
+                        }
+                    }
+
+                    // Check if car has status field indicating active booking
+                    if (car.status) {
+                        const statusLower = car.status.toLowerCase();
+                        if (['active', 'ongoing', 'confirmed', 'booked', 'reserved', 'in_progress', 'rented'].includes(
+                                statusLower)) {
+                            return true;
+                        }
+                    }
+
+                    // Check if car has booking_dates or dates field
+                    if (car.booking_dates || car.dates || car.booking_date || car.booking_info) {
+                        return true;
+                    }
+
+                    // Check if car has fromDate and toDate
+                    if (car.fromDate || car.toDate) {
+                        return true;
+                    }
+
+                    // Check stage
+                    if (stage === 'confirm_booking' || stage === 'payment' || stage === 'confirmed') {
+                        return true;
+                    }
+
+                    // Check if car has a booking_id or reservation_id
+                    if (car.booking_id || car.reservation_id || car.booking_ref) {
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                // Render cars with proper separation
+                function renderCarGrid(cars, container, stage, responseMessage) {
+                    if (!container) return;
+                    container.innerHTML = '';
+                    if (!cars || cars.length === 0) return;
+
+                    // Split cars into active bookings and available cars using response message
+                    const activeBookings = cars.filter(c => isActiveBooking(c, stage, responseMessage));
+                    const availableCars = cars.filter(c => !isActiveBooking(c, stage, responseMessage));
+
+                    // Render Active Bookings (no Book Now button)
+                    if (activeBookings.length > 0) {
+                        const gridDiv = document.createElement('div');
+                        gridDiv.className = 'active-booking-grid';
+
+                        // Add header
+                        const header = document.createElement('div');
+                        header.className = 'grid-header';
+                        header.textContent = `📋 Active Bookings (${activeBookings.length})`;
+                        gridDiv.appendChild(header);
+
+                        activeBookings.forEach(function(car, i) {
+                            const carId = car.id || i;
+                            const name = (car.display_name || ((car.carMake || car.make || '') + ' ' + (car
+                                .carModel || car.model || ''))).trim() || 'Car #' + (i + 1);
+                            const seats = car.seatingCapacity || car.seating || '';
+                            const trans = fmt(TRANS_MAP, car.transmissionType || car.transmission || '');
+                            const fuel = fmt(FUEL_MAP, car.fuelType || car.fuel || '');
+                            const body = fmt(BODY_MAP, car.bodyType || car.body_type || '');
+                            const price = car.price || car.dailyRate || '';
+
+                            let details = '';
+                            if (seats) details += `<span>${seats} Seat</span>`;
+                            if (trans) details += `<span>${esc(trans)}</span>`;
+                            if (fuel) details += `<span>${esc(fuel)}</span>`;
+                            if (body) details += `<span>${esc(body)}</span>`;
+                            if (price) details += `<span>$${price}/day</span>`;
+
+                            // Get booking info from car or from response message
+                            let bookingInfo = car.booking_dates || car.dates || car.booking_date || car.booking_info ||
+                                'Ongoing';
+                            // Try to extract dates from response message if available
+                            if (responseMessage && !bookingInfo) {
+                                const match = responseMessage.match(new RegExp(`${name}\\s*\\(([^)]+)\\)`));
+                                if (match) {
+                                    bookingInfo = match[1];
+                                }
+                            }
+                            const statusText = car.status || 'Active';
+
+                            const card = document.createElement('div');
+                            card.className = 'active-card';
+                            card.innerHTML = `
+                                <div class="car-name">${esc(name)}</div>
+                                <div class="car-details">${details}</div>
+                                <div class="booking-status">📅 ${esc(bookingInfo)} · <span style="color:#22c55e;font-weight:600;">${esc(statusText)}</span></div>
+                            `;
+                            gridDiv.appendChild(card);
+                        });
+                        container.appendChild(gridDiv);
+                    }
+
+                    // Render Available Cars (with Book Now button)
+                    if (availableCars.length > 0) {
+                        const gridDiv = document.createElement('div');
+                        gridDiv.className = 'car-grid';
+
+                        // Add header
+                        const header = document.createElement('div');
+                        header.className = 'grid-header';
+                        header.textContent = `🚗 Available Cars (${availableCars.length})`;
+                        gridDiv.appendChild(header);
+
+                        availableCars.forEach(function(car, i) {
+                            const carId = car.id || i;
+                            const name = (car.display_name || ((car.carMake || car.make || '') + ' ' + (car
+                                .carModel || car.model || ''))).trim() || 'Car #' + (i + 1);
+                            const seats = car.seatingCapacity || car.seating || '';
+                            const trans = fmt(TRANS_MAP, car.transmissionType || car.transmission || '');
+                            const fuel = fmt(FUEL_MAP, car.fuelType || car.fuel || '');
+                            const body = fmt(BODY_MAP, car.bodyType || car.body_type || '');
+                            const price = car.price || car.dailyRate || '';
+
+                            let details = '';
+                            if (seats) details += `<span>${seats} Seat</span>`;
+                            if (trans) details += `<span>${esc(trans)}</span>`;
+                            if (fuel) details += `<span>${esc(fuel)}</span>`;
+                            if (body) details += `<span>${esc(body)}</span>`;
+                            if (price) details += `<span>$${price}/day</span>`;
+
+                            const card = document.createElement('div');
+                            card.className = 'car-card';
+                            card.innerHTML = `
+                                <div class="car-name">${esc(name)}</div>
+                                <div class="car-details">${details}</div>
+                                <button class="book-now" data-carid="${carId}">Book Now</button>
+                            `;
+                            card.querySelector('.book-now').addEventListener('click', function() {
+                                handleQuery('book_car_id:' + carId, 'Booking ' + name + '…');
+                            });
+                            gridDiv.appendChild(card);
+                        });
+                        container.appendChild(gridDiv);
+                    }
+                }
+
+                toggleBtn.addEventListener('click', function() {
+                    widget.classList.toggle('active');
+                    if (widget.classList.contains('active')) {
+                        input.focus();
+                        scrollBottom();
+                    }
+                });
+                document.addEventListener('click', function(e) {
+                    if (!widget.classList.contains('active')) return;
+                    if (!e.target.closest('#toggleChatBtn') && !e.target.closest('.chat-widget'))
+                        widget.classList.remove('active');
+                });
+
+                function appendUser(text) {
+                    const div = document.createElement('div');
+                    div.className = 'chat-bubble user';
+                    div.textContent = text;
+                    chatStream.appendChild(div);
+                    scrollBottom();
+                }
+
+                function appendBot(text, cars, entities, stage, redirectUrl) {
+                    let chipHtml = '';
+                    if (stage && STAGE_MAP[stage]) {
+                        chipHtml = `<span class="stage-chip">${STAGE_MAP[stage]}</span><br>`;
+                    }
+                    const bubble = document.createElement('div');
+                    bubble.className = 'chat-bubble bot';
+                    const carContainerId = 'carGrid_' + Date.now();
+                    bubble.innerHTML = chipHtml + '<i class="fas fa-robot text-blue-400 mr-1 text-xs"></i>' + esc(text) +
+                        `<div id="${carContainerId}" style="margin-top:6px;width:100%;"></div>`;
+                    chatStream.appendChild(bubble);
+
+                    const carContainer = document.getElementById(carContainerId);
+                    if (carContainer) {
+                        // Pass the response message for detection
+                        renderCarGrid(cars || [], carContainer, stage, text);
+                    }
+
+                    if (stage === 'collecting_dates') {
+                        appendDatePicker();
+                    }
+
+                    const name = (entities && entities.selected_car_name) || '';
+                    if (name && !summaryShown && (stage === 'confirm_booking' || stage === 'payment' || redirectUrl)) {
+                        summaryShown = true;
+                        const sum = document.createElement('div');
+                        sum.className = 'summary-inline';
+                        let rows = `<div class="sh">Booking Summary</div>`;
+                        rows += `<div class="srow"><span class="sk">Car</span><span class="sv">${esc(name)}</span></div>`;
+                        if (entities.booking_dates) rows +=
+                            `<div class="srow"><span class="sk">Dates</span><span class="sv">${esc(entities.booking_dates)}</span></div>`;
+                        if (entities.seating_capacity) rows +=
+                            `<div class="srow"><span class="sk">Seating</span><span class="sv">${entities.seating_capacity} Seater</span></div>`;
+                        if (entities.transmission_type) rows +=
+                            `<div class="srow"><span class="sk">Transmission</span><span class="sv">${esc(fmt(TRANS_MAP, entities.transmission_type))}</span></div>`;
+                        if (entities.fuel_type) rows +=
+                            `<div class="srow"><span class="sk">Fuel</span><span class="sv">${esc(fmt(FUEL_MAP, entities.fuel_type))}</span></div>`;
+                        sum.innerHTML = rows;
+                        chatStream.appendChild(sum);
+                    }
+
+                    if (redirectUrl) {
+                        const a = document.createElement('a');
+                        a.href = redirectUrl;
+                        a.target = '_blank';
+                        a.className = 'pay-inline';
+                        a.innerHTML = '<i class="fas fa-credit-card mr-1"></i> Complete Payment';
+                        chatStream.appendChild(a);
+                        try { window.open(redirectUrl, '_blank'); } catch (e) {}
+                    }
+                    scrollBottom();
+                }
+
+                function appendDatePicker() {
+                    const t = todayISO();
+                    const t1 = nextDayISO(t);
+                    const box = document.createElement('div');
+                    box.className = 'date-picker-inline';
+                    box.innerHTML = `
+                        <div class="dp-label">Select Your Dates</div>
+                        <div class="dp-row">
+                            <div class="dp-field">
+                                <label>Pickup</label>
+                                <input type="date" id="pickupDate" min="${t}" value="${t}" />
+                            </div>
+                            <div class="dp-field">
+                                <label>Drop-off</label>
+                                <input type="date" id="dropoffDate" min="${t1}" value="${t1}" />
+                            </div>
+                        </div>
+                        <button class="search-btn"><i class="fas fa-search mr-1"></i> Search Cars</button>
+                    `;
+                    const pickupIn = box.querySelector('#pickupDate');
+                    const dropoffIn = box.querySelector('#dropoffDate');
+                    pickupIn.addEventListener('change', function() {
+                        const next = nextDayISO(pickupIn.value);
+                        dropoffIn.min = next;
+                        if (dropoffIn.value <= pickupIn.value) dropoffIn.value = next;
+                    });
+                    box.querySelector('.search-btn').addEventListener('click', function() {
+                        const q = fmtDateDisplay(pickupIn.value) + ' to ' + fmtDateDisplay(dropoffIn.value);
+                        handleQuery(q);
+                    });
+                    chatStream.appendChild(box);
+                }
+
+                async function callApi(query) {
+                    const res = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+                        body: JSON.stringify({ query, user_id: USER_ID, session_id: sessionId, accNum: 12971 })
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.json();
+                }
+
+                async function handleQuery(query, displayText) {
+                    if (query.toLowerCase().includes('book') || query.toLowerCase().includes('search') || query.includes(
+                            'to')) {
+                        summaryShown = false;
+                    }
+                    appendUser(displayText || query);
+                    typingDots.classList.add('show');
+                    scrollBottom();
+                    setDisabled(true);
+                    try {
+                        const data = await callApi(query);
+                        typingDots.classList.remove('show');
+                        const text = data.response_message || 'Something went wrong.';
+                        const cars = data.cars || data.data || [];
+                        const entities = data.entities || {};
+                        const stage = data.next_stage || null;
+                        const redirectUrl = data.redirect_url || null;
+                        appendBot(text, cars, entities, stage, redirectUrl);
+                    } catch (err) {
+                        typingDots.classList.remove('show');
+                        appendBot('Sorry, I had trouble connecting. Please try again.', [], {}, null, null);
+                    } finally {
+                        setDisabled(false);
+                        input.focus();
+                    }
+                }
+
+                function handleSend() {
+                    const query = input.value.trim();
+                    if (!query) return;
+                    input.value = '';
+                    if (!started) {
+                        if (YES_WORDS.has(query.toLowerCase())) {
+                            started = true;
+                            handleQuery('hi');
+                        } else {
+                            appendUser(query);
+                            const div = document.createElement('div');
+                            div.className = 'chat-bubble bot';
+                            div.innerHTML =
+                                '<i class="fas fa-robot text-blue-400 mr-1 text-xs"></i> Please type <strong>yes</strong> to get started!';
+                            chatStream.appendChild(div);
+                            scrollBottom();
+                        }
+                        return;
+                    }
+                    handleQuery(query);
+                }
+
+                sendBtn.addEventListener('click', handleSend);
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSend();
+                    }
+                });
+
+                window.addEventListener('load', scrollBottom);
+            })();
+        })();
+    </script>
+</body>
+</html>
