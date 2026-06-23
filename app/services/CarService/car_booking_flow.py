@@ -8,7 +8,9 @@ Stages:
   PHASE 2  → Fetch + cache inventory
   PHASE 3  → Show car options, ask for filters or direct selection
   PHASE 4  → Collect filters (seating / transmission / fuel) via adjustment flow
-  PHASE 5  → Confirm booking → Payment
+  PHASE 5  → Confirm booking
+  PHASE 6  → Staff collection (phone → lookup → create if needed)
+  PHASE 7  → Payment
 """
 
 from app.core.logger import logger
@@ -17,8 +19,10 @@ from app.enums.stage_enums import BookingStages
 from app.models.intent_models import IntentResponse
 from app.services.CarService.adjutsment_flow import run_adjustment, _apply_filters, _normalize_trans
 from app.services.CarService.car_search import car_search
+from app.services.CarService.payment_flow import run_staff_collection, _ask_phone
 import asyncio
 from app.learning.feedback_collector import feedback_collector
+from app.services.state_manager import state_manager
 from app.services.CarService.partials.response_builder import (
     car_options_message,
     filtered_options_message,
@@ -29,12 +33,17 @@ from app.services.CarService.partials.response_builder import (
 _CONFIRM_WORDS = {"yes", "yeah", "sure", "proceed", "confirm", "ok", "okay", "yep", "book it"}
 _CANCEL_WORDS  = {"no", "nope", "cancel", "change", "different", "other", "back", "reselect"}
 
+# All stages that belong to the staff sub-machine
+_STAFF_STAGES = {
+    BookingStages.COLLECTING_PHONE,
+    BookingStages.COLLECTING_FULL_NAME,
+    BookingStages.COLLECTING_EMAIL,
+    BookingStages.COLLECTING_LICENCE_NUMBER,
+    BookingStages.COLLECTING_LICENCE_EXPIRY,
+}
+
 
 def _is_confirmed(entities: dict, raw_query: str) -> bool:
-    """
-    Check confirmation from extracted entity first, then fall back to raw text.
-    Entity takes priority — raw text is a safety net.
-    """
     if "confirmation" in entities:
         return bool(entities["confirmation"])
     return any(w in raw_query.lower().split() for w in _CONFIRM_WORDS)
@@ -54,31 +63,21 @@ async def run(
     raw_query: str,
     context: dict,
 ) -> IntentResponse:
-    """
-    Main entry point. Called from intent_service whenever
-    detected_intent is CAR_BOOKING or CAR_SEARCH.
 
-    State machine order:
-      1. Date-change reset
-      2. Collect pickup date
-      3. Collect drop-off date
-      4. Fetch inventory
-      5. Confirm stage (must check before wants_adjustment logic)
-      6. Show options (first time)
-      7. Resolve wants_adjustment
-      8. Adjustment flow (filters)
-      9. Car selection + booking confirmation
-    """
+    session_id = context.get("session_id", "unknown")
+    prev_stage = context.get("conversation_stage")
 
     # ── 1. User wants to change dates — reset all booking state ──────────────
     if merged_entities.get("wants_date_change"):
         _reset_booking_state(merged_entities)
+        merged_entities["dates_changed"] = True
+        await state_manager.reset_context(session_id)
         return make_response(
             intent=detected_intent, confidence=confidence,
             entities=merged_entities, missing_entities=["booking_dates"],
             next_stage=BookingStages.COLLECTING_DATES,
             response_message="Sure! What are your new dates? (e.g. '10th June to 15th June')",
-            raw_query=raw_query, available_inventory=None,
+            raw_query=raw_query, available_inventory=available_inventory,
         )
 
     # ── 2. Collect pickup date ────────────────────────────────────────────────
@@ -101,39 +100,47 @@ async def run(
             raw_query=raw_query, available_inventory=available_inventory,
         )
 
-    # ── 4. Fetch inventory once, cache it ─────────────────────────────────────
-    if available_inventory is None:
+    # ── 4. Fetch inventory once (or re-fetch on date change) ──────────────────
+    dates_changed = merged_entities.pop("dates_changed", False)
+    if available_inventory is None or dates_changed:
         try:
             logger.info(f"Fetching inventory for {merged_entities['booking_dates']}")
             available_inventory = await car_search.get_available_inventory(
                 date_iso=merged_entities.get("booking_date_iso"),
                 date_end_iso=merged_entities.get("booking_date_end"),
             )
-            filtered_data=_apply_filters(available_inventory,merged_entities)
-            logger.info(f"Available Data fetch: {available_inventory}")
-            logger.info(f"Filtered Data fetch: {filtered_data}")
-            if (merged_entities.get('seating_capacity') or merged_entities.get('fuel_type') or merged_entities.get('transmission_type')) and filtered_data:
+            filtered_data = _apply_filters(available_inventory, merged_entities)
+            logger.info(f"Available inventory count: {len(available_inventory)}")
+            logger.info(f"Filtered inventory count: {len(filtered_data)}")
+
+            if (
+                merged_entities.get("seating_capacity")
+                or merged_entities.get("fuel_type")
+                or merged_entities.get("transmission_type")
+            ) and filtered_data:
                 return make_response(
-                intent=detected_intent, confidence=confidence,
-                entities=merged_entities, missing_entities=[],
-                next_stage=BookingStages.SHOWING_OPTIONS,
-                response_message=car_options_message(filtered_data,merged_entities["booking_dates"]),
-                raw_query=raw_query, available_inventory=available_inventory, data=filtered_data,
+                    intent=detected_intent, confidence=confidence,
+                    entities=merged_entities, missing_entities=[],
+                    next_stage=BookingStages.SHOWING_OPTIONS,
+                    response_message=car_options_message(filtered_data, merged_entities["booking_dates"]),
+                    raw_query=raw_query, available_inventory=available_inventory, data=filtered_data,
                 )
+
             if not filtered_data:
                 return make_response(
-                intent=detected_intent, confidence=confidence,
-                entities=merged_entities, missing_entities=[],
-                next_stage=BookingStages.SHOWING_OPTIONS,
-                response_message=filtered_options_message(filtered_data,filtered_data),
-                raw_query=raw_query, available_inventory=available_inventory, data=filtered_data,
+                    intent=detected_intent, confidence=confidence,
+                    entities=merged_entities, missing_entities=[],
+                    next_stage=BookingStages.SHOWING_OPTIONS,
+                    response_message=filtered_options_message(filtered_data, filtered_data),
+                    raw_query=raw_query, available_inventory=available_inventory, data=filtered_data,
                 )
+
         except Exception as e:
             logger.error(f"Inventory fetch error: {e}")
             return make_response(
                 intent=detected_intent, confidence=confidence,
                 entities=merged_entities, missing_entities=[],
-                next_stage=BookingStages.COLLECTING_DATES,  # stay recoverable
+                next_stage=BookingStages.COLLECTING_DATES,
                 response_message="I had trouble checking availability. Please try again in a moment.",
                 raw_query=raw_query, available_inventory=None,
             )
@@ -150,20 +157,41 @@ async def run(
             raw_query=raw_query, available_inventory=[],
         )
 
-    # ── 5. Confirm booking stage ──────────────────────────────────────────────
-    # This MUST be checked before wants_adjustment logic to avoid falling through.
-    prev_stage = context.get("conversation_stage")
+    # ── 5. Staff collection stages (phone, name, email, licence) ─────────────
+    # Delegated entirely to payment_flow — keeps this file clean.
+    if prev_stage in _STAFF_STAGES:
+        return await run_staff_collection(
+            detected_intent=detected_intent,
+            confidence=confidence,
+            merged_entities=merged_entities,
+            available_inventory=available_inventory,
+            raw_query=raw_query,
+            prev_stage=prev_stage,
+            session_id=session_id,
+        )
 
+    # ── 6. Confirm booking stage ──────────────────────────────────────────────
     if prev_stage == BookingStages.CONFIRM_BOOKING:
         return _handle_confirm_stage(
             detected_intent, confidence, merged_entities,
-            available_inventory, raw_query,
+            available_inventory, raw_query, session_id,
         )
 
-    # ── 6. Show car options (first time only) ─────────────────────────────────
+    # ── 7. Show car options (first time only) ─────────────────────────────────
     if "options_shown" not in merged_entities:
+        # If the user already selected a car (e.g. clicked Book Now before
+        # options_shown was persisted), skip re-showing and go straight to
+        # selection handling — otherwise the selected_car_id is silently lost.
+        if "selected_car_id" in merged_entities:
+            merged_entities["options_shown"] = True
+            merged_entities["wants_adjustment"] = False
+            return _handle_car_selection(
+                detected_intent, confidence, merged_entities,
+                available_inventory, raw_query,
+            )
+
         merged_entities["options_shown"] = True
-        filtered_data=_apply_filters(available_inventory,merged_entities)
+        filtered_data = _apply_filters(available_inventory, merged_entities)
         return make_response(
             intent=detected_intent, confidence=confidence,
             entities=merged_entities, missing_entities=[],
@@ -173,6 +201,7 @@ async def run(
             data=filtered_data,
             available_inventory=available_inventory,
         )
+
     # ── Auto-trigger adjustment when filter entities arrive after options shown ──
     wants_adjustment = merged_entities.get("wants_adjustment")
     if (
@@ -183,12 +212,15 @@ async def run(
     ):
         merged_entities["wants_adjustment"] = True
         wants_adjustment = True
-    # ── 7. Resolve wants_adjustment ───────────────────────────────────────────
-    wants_adjustment = merged_entities.get("wants_adjustment")  # always assign first
+
+    # ── 8. Resolve wants_adjustment ───────────────────────────────────────────
+    wants_adjustment = merged_entities.get("wants_adjustment")
 
     if wants_adjustment is None:
-        if any(k in merged_entities for k in ("seating_capacity", "transmission_type", "fuel_type")) \
-                and "selected_car_id" not in merged_entities:
+        if (
+            any(k in merged_entities for k in ("seating_capacity", "transmission_type", "fuel_type"))
+            and "selected_car_id" not in merged_entities
+        ):
             merged_entities["wants_adjustment"] = True
             wants_adjustment = True
         elif "selected_car_id" in merged_entities:
@@ -207,14 +239,14 @@ async def run(
                 available_inventory=available_inventory,
             )
 
-    # ── 8. Adjustment / filter flow ───────────────────────────────────────────
+    # ── 9. Adjustment / filter flow ───────────────────────────────────────────
     if wants_adjustment is True:
         return await run_adjustment(
             detected_intent, confidence, merged_entities,
             available_inventory, raw_query,
         )
 
-    # ── 9. No adjustment → select car and confirm ─────────────────────────────
+    # ── 10. No adjustment → select car and confirm ────────────────────────────
     return _handle_car_selection(
         detected_intent, confidence, merged_entities,
         available_inventory, raw_query,
@@ -230,7 +262,11 @@ def _reset_booking_state(entities: dict) -> None:
         "wants_date_change", "options_shown", "wants_adjustment",
         "selected_car_id", "selected_car_name", "selected_car_seats",
         "seating_capacity", "transmission_type", "fuel_type",
-        "reselect_car", "confirmation",
+        "reselect_car", "confirmation", "available_inventory",
+        # staff fields
+        "phone", "staff_id", "staff_name", "staff_email",
+        "staff_acc_num", "staff_num", "full_name", "email",
+        "licence_number", "licence_expiry",
     ]
     for key in keys_to_clear:
         entities.pop(key, None)
@@ -238,16 +274,18 @@ def _reset_booking_state(entities: dict) -> None:
 
 def _handle_confirm_stage(
     detected_intent, confidence, merged_entities,
-    available_inventory, raw_query,
+    available_inventory, raw_query, session_id,
 ) -> IntentResponse:
     """Handle the CONFIRM_BOOKING stage response."""
 
     if _is_confirmed(merged_entities, raw_query):
         car_name = merged_entities.get("selected_car_name", "your car")
         dates    = merged_entities.get("booking_dates", "your selected dates")
-
-        # Record successful booking — highest quality learning signal
+        # ── Confirmed → move to phone collection, not payment ────────────────
+        merged_entities.pop("confirmation", None)
+         # Record successful booking — highest quality learning signal
         asyncio.create_task(feedback_collector.record_success(
+            # context = await state_manager.get_context(request.session_id)
             session_id=merged_entities.get("_session_id", "unknown"),
             booking_summary={
                 "car_name":         car_name,
@@ -258,17 +296,7 @@ def _handle_confirm_stage(
                 "selected_car_id":  merged_entities.get("selected_car_id"),
             },
         ))
-
-        return make_response(
-            intent=detected_intent, confidence=confidence,
-            entities=merged_entities, missing_entities=[],
-            next_stage=BookingStages.PAYMENT,
-            response_message=(
-                f"Great! Proceeding to payment for **{car_name}** "
-                f"({dates}). Please complete the payment below."
-            ),
-            raw_query=raw_query, available_inventory=available_inventory, data=[],
-        )
+        return _ask_phone(detected_intent, confidence, merged_entities, available_inventory)
 
     if _is_cancelled(merged_entities, raw_query):
         for key in ["selected_car_id", "selected_car_name", "selected_car_seats",
@@ -283,17 +311,16 @@ def _handle_confirm_stage(
             raw_query=raw_query, available_inventory=available_inventory, data=final_filtered,
         )
 
-    # Ambiguous response at confirm stage — re-ask
+    # Ambiguous — re-ask
     return make_response(
         intent=detected_intent, confidence=confidence,
         entities=merged_entities, missing_entities=[],
         next_stage=BookingStages.CONFIRM_BOOKING,
         response_message=(
-            f"Just to confirm — shall I proceed to payment for "
+            f"Just to confirm — shall I proceed with "
             f"**{merged_entities.get('selected_car_name', 'this car')}**? (Yes / No)"
         ),
-        raw_query=raw_query, available_inventory=available_inventory,
-        data=[],
+        raw_query=raw_query, available_inventory=available_inventory, data=[],
     )
 
 
@@ -305,7 +332,6 @@ def _handle_car_selection(
 
     final_filtered = _apply_filters(available_inventory, merged_entities)
 
-    # User wants to pick a different car
     if merged_entities.get("reselect_car"):
         for key in ["selected_car_id", "selected_car_name", "selected_car_seats",
                     "reselect_car", "wants_adjustment"]:
@@ -330,7 +356,6 @@ def _handle_car_selection(
             available_inventory=available_inventory,
         )
 
-    # ── Look up car strictly by ID — no fuzzy matching ────────────────────────
     try:
         selected_car_id_int = int(selected_id)
     except (ValueError, TypeError):
@@ -343,12 +368,10 @@ def _handle_car_selection(
             response_message="Something went wrong selecting that car. Please pick from the options below.",
             raw_query=raw_query, available_inventory=available_inventory, data=final_filtered,
         )
-
+    logger.info(f"[CAR_SELECT] selected_id={selected_id!r} | inventory_ids={[c['id'] for c in available_inventory]}")
     selected_car_data = next(
-        (c for c in available_inventory if c["id"] == selected_car_id_int),
-        None,
+        (c for c in available_inventory if c["id"] == selected_car_id_int), None,
     )
-
     logger.info(f"Car lookup by ID {selected_car_id_int!r} → {selected_car_data}")
 
     if not selected_car_data:
@@ -361,9 +384,9 @@ def _handle_car_selection(
             raw_query=raw_query, available_inventory=available_inventory, data=final_filtered,
         )
 
-    make  = (selected_car_data.get("carMake")  or "").strip()
-    model = (selected_car_data.get("carModel") or "").strip()
-    car_name = f"{make} {model}".strip()
+    make_  = (selected_car_data.get("carMake")  or "").strip()
+    model  = (selected_car_data.get("carModel") or "").strip()
+    car_name = f"{make_} {model}".strip()
 
     if not car_name:
         merged_entities.pop("selected_car_id", None)
@@ -375,8 +398,7 @@ def _handle_car_selection(
             raw_query=raw_query, available_inventory=available_inventory, data=final_filtered,
         )
 
-    # ── Commit selection to state ──────────────────────────────────────────────
-    merged_entities["selected_car_id"]    = selected_car_data["id"]   # always int from DB
+    merged_entities["selected_car_id"]    = selected_car_data["id"]
     merged_entities["selected_car_name"]  = car_name
     merged_entities["selected_car_seats"] = selected_car_data["seatingCapacity"]
 

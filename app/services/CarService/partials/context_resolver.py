@@ -15,6 +15,13 @@ _STALE_KEYS = [
 # Filter preferences are also stale when dates change
 _FILTER_KEYS = ["seating_capacity", "transmission_type", "fuel_type"]
 
+# Keys that indicate the user is re-specifying what car they want.
+# When any of these arrive fresh, a previous car selection is no longer valid.
+_SELECTION_STALE_KEYS = [
+    "selected_car_id", "selected_car_name", "selected_car_seats",
+    "confirmation", "reselect_car",
+]
+
 
 def resolve(
     detected_intent: IntentType,
@@ -30,8 +37,10 @@ def resolve(
       1. New dates in an active booking → clear stale state, start fresh search.
       2. High-confidence same-family intent → preserve context, merge new entities.
          (Later entities overwrite earlier ones — intentional, supports corrections.)
+         2a. If new filter entities arrive, invalidate any previous car selection.
       3. High-confidence topic switch → discard previous context entirely.
       4. Low confidence + active CAR flow + has entities → treat as follow-up answer.
+         4a. Same selection-staleness rule applies.
       5. Low confidence + active CAR flow + no entities → ambiguous, return UNKNOWN.
       6. Default: merge previous + new.
 
@@ -61,23 +70,46 @@ def resolve(
             or (detected_intent in CAR_INTENTS and previous_intent in CAR_INTENTS)
         )
         if same_family:
-            # Merge: new entity values override old ones (supports mid-flow corrections)
-            return detected_intent, confidence, {**previous_entities, **initial_entities}
+            # If the user is re-specifying filters, any previously selected car
+            # is no longer valid — clear it before merging so the flow re-filters
+            # instead of jumping straight to confirm with a stale selection.
+            incoming_filters = any(k in initial_entities for k in _FILTER_KEYS)
+            if incoming_filters and previous_entities.get("selected_car_id"):
+                logger.info(
+                    f"New filters detected with stale car selection "
+                    f"({previous_entities['selected_car_id']}) — clearing selection"
+                )
+                base = {k: v for k, v in previous_entities.items() if k not in _SELECTION_STALE_KEYS}
+            else:
+                base = previous_entities
+
+            return detected_intent, confidence, {**base, **initial_entities}
 
         # Genuine topic switch
         logger.info(f"Topic switch detected: {previous_intent} → {detected_intent}")
-        
+
         # CHECK_BOOKING_STATUS is a stateless side-query — preserve the
         # in-progress booking context so the user can return to it afterward.
         if detected_intent == IntentType.CHECK_BOOKING_STATUS and previous_intent in CAR_INTENTS:
             return detected_intent, confidence, previous_entities
-        
+
         return detected_intent, confidence, initial_entities
 
     # ── Rule 4: Low confidence, active CAR flow, has entities ─────────────────
     if previous_intent in CAR_INTENTS and confidence < 0.60 and initial_entities:
         logger.info(f"Follow-up in active CAR flow: {initial_entities}")
-        return IntentType.CAR_BOOKING, 0.95, {**previous_entities, **initial_entities}
+        # Same staleness rule — new filters invalidate previous car selection
+        incoming_filters = any(k in initial_entities for k in _FILTER_KEYS)
+        if incoming_filters and previous_entities.get("selected_car_id"):
+            logger.info(
+                f"Follow-up filters detected with stale car selection "
+                f"({previous_entities['selected_car_id']}) — clearing selection"
+            )
+            base = {k: v for k, v in previous_entities.items() if k not in _SELECTION_STALE_KEYS}
+        else:
+            base = previous_entities
+
+        return IntentType.CAR_BOOKING, 0.95, {**base, **initial_entities}
 
     # ── Rule 5: Low confidence, active CAR flow, no entities ─────────────────
     if previous_intent in CAR_INTENTS and confidence < 0.60 and not initial_entities:

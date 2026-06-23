@@ -2,13 +2,20 @@ from contextlib import asynccontextmanager
 import asyncio
 from fastapi import FastAPI
 from app.api.v1.api_router import router as v1_router
+from fastapi.middleware.cors import CORSMiddleware
 from app.db.mongo import mongo_db
 from app.db.mysql_db import mysql_db
 from app.services.semantic_intent_service import semantic_intent_service
 from app.learning.retraining_scheduler import retrain_loop
 from app.api.v1.endpoints.feedback import router as feedback_router
 from app.ollama.ollama_service import ollama_service
+from app.core.rate_limiter import rate_limiter
 
+
+ALLOWED_ORIGINS = [
+    "http://127.0.0.1:5500",
+    "https://copier-sequel-gestation.ngrok-free.app",
+]
 
 async def create_learning_indexes() -> None:
     await mongo_db.create_index(
@@ -43,8 +50,11 @@ async def lifespan(app: FastAPI):
     # Check Ollama availability (non-blocking)
     ollama_service._is_available()
 
-    # Create MongoDB indexes — safe to run every startup, skipped if exist
+    # Create MongoDB indexes — safe to run every startup
     await create_learning_indexes()
+    
+    # Create indexes — safe to run every startup
+    await rate_limiter.create_indexes()
 
     # Start retraining background loop — must be BEFORE yield
     retrain_task = asyncio.create_task(retrain_loop())
@@ -62,10 +72,20 @@ async def lifespan(app: FastAPI):
     await mysql_db.close()
 
 
-app = FastAPI(title="AI Car Booking Microservice", lifespan=lifespan)
+app = FastAPI(
+    title="RentGenie Microservice",
+    lifespan=lifespan
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(v1_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
-    return {"message": "AI Microservice is online"}
+    return {"message": "RentGenie Microservice is online"}

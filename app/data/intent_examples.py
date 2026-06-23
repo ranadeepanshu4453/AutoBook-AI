@@ -88,7 +88,23 @@ INTENT_EXAMPLES = {
         "car form 15 to 18 june",
         "5seater manual car from 12 to 14 june",
         "automtic car next weekend",
-    ],
+    
+    "show me 7seater manual car from june 12 to june 13",
+    "mere liye ke car book kro",
+    "i want diesel only",
+    "mujhe ek car book krni h",
+    "i want a 5seater manual hybrid car from 12 june to 14 june",
+    "show me all manual cars",
+    "kya ap mujhe car book krne me help kr sakte ho",
+    "show all 5seater manual cars",
+    "show me all 7seater manual car",
+
+    "mujjhe ek car book krni h",
+    "book me a toyota hilux gr sport for my family trip",
+
+    "book a aussie trailers heavy duty for me",
+
+],
 
     IntentType.CAR_SEARCH: [
 
@@ -119,7 +135,12 @@ INTENT_EXAMPLES = {
         "what sedans do you have",
         "show me SUVs",
         "any luxury cars available",
-    ],
+    
+    "show me all 5seaters",
+    "show me 5seater",
+
+    "show me hatchback for my trip",
+],
 
     IntentType.INVENTORY_FIND: [
 
@@ -161,7 +182,9 @@ INTENT_EXAMPLES = {
         "do I have a car booked right now",
         "check active reservations",
         "show all current bookings",
-    ],
+    
+    "show my active bookings",
+],
 
     IntentType.CUSTOMER_FIND: [
 
@@ -290,7 +313,9 @@ INTENT_EXAMPLES = {
         "hola",
         "what's up",
         "hey bot"
-    ],
+    
+    "he",
+],
 
     IntentType.HELP: [
 

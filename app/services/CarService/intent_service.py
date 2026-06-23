@@ -58,6 +58,18 @@ _SKIP_OLLAMA_STAGES = {
     BookingStages.COLLECTING_TRANSMISSION,
     BookingStages.COLLECTING_FUEL_TYPE,
     BookingStages.CONFIRM_BOOKING,
+    BookingStages.COLLECTING_PHONE,         
+    BookingStages.COLLECTING_FULL_NAME,     
+    BookingStages.COLLECTING_EMAIL,         
+    BookingStages.COLLECTING_LICENCE_NUMBER,
+    BookingStages.COLLECTING_LICENCE_EXPIRY,
+}
+_BOOKING_STAGES = {
+    BookingStages.COLLECTING_PHONE,
+    BookingStages.COLLECTING_FULL_NAME,
+    BookingStages.COLLECTING_EMAIL,
+    BookingStages.COLLECTING_LICENCE_NUMBER,
+    BookingStages.COLLECTING_LICENCE_EXPIRY,
 }
 def _should_skip_ollama(
         tier: str,
@@ -99,7 +111,7 @@ class IntentService:
         text = text.lower().strip()
         if text.startswith("book_car_id:"):
             return text  # preserve the colon — entity extractor handles this
-        return re.sub(r'[^\w\s]', '', text)
+        return re.sub(r'[^\w\s@\.\-/]', '', text)
 
     @staticmethod
     def _next_irrelevant() -> str:
@@ -144,7 +156,7 @@ class IntentService:
         self,
         cleaned: str,
         prev_stage: BookingStages,
-        previous_entities: dict,
+        merged_entities: dict,
         available_inventory: list | None,
     ) -> tuple[IntentType, float, dict] | None:
         """
@@ -154,6 +166,10 @@ class IntentService:
         This is the deterministic fallback when semantic detection returns UNKNOWN
         inside an active booking flow.
         """
+        # ── Guard: staff stages own their input — never try to resolve as car selection ──
+        if prev_stage in _BOOKING_STAGES:
+            return IntentType.CAR_BOOKING, 0.99, merged_entities
+
 
         # ── Stage-aware numeric parsing for seating ───────────────────────────
         if prev_stage == BookingStages.COLLECTING_SEATING and cleaned.strip().isdigit():
@@ -162,7 +178,7 @@ class IntentService:
                 return (
                     IntentType.CAR_BOOKING,
                     0.99,
-                    {**previous_entities, "seating_capacity": val},
+                    {**merged_entities, "seating_capacity": val},
                 )
 
         # ── Yes/No handling for stages that expect it ─────────────────────────
@@ -172,17 +188,17 @@ class IntentService:
             entity_key  = _STAGE_YES_NO_MAP[prev_stage]
 
             if prev_stage == BookingStages.SHOWING_OPTIONS:
-                merged = {**previous_entities, "wants_adjustment": is_yes}
+                merged = {**merged_entities, "wants_adjustment": is_yes}
                 return IntentType.CAR_BOOKING, 0.99, merged
 
             if prev_stage == BookingStages.CONFIRM_BOOKING:
-                merged = {**previous_entities, "confirmation": is_yes}
+                merged = {**merged_entities, "confirmation": is_yes}
                 return IntentType.CAR_BOOKING, 0.99, merged
 
             # For filter stages (transmission/fuel): "no"/"skip" means skip that filter
             if not is_yes:
                 logger.info('testing for yes no')
-                merged = dict(previous_entities)
+                merged = dict(merged_entities)
                 merged.pop(entity_key, None)
                 skip_key = (
                     "skip_seating_capacity"
@@ -193,12 +209,12 @@ class IntentService:
                 return IntentType.CAR_BOOKING, 0.99, merged
             # "yes" for a filter stage is ambiguous (yes to what?) — fall through
             # and let the flow re-ask
-            return IntentType.CAR_BOOKING, 0.99, dict(previous_entities)
+            return IntentType.CAR_BOOKING, 0.99, dict(merged_entities)
 
         # ── Car selection by list number ──────────────────────────────────────
         selected = self._resolve_car_selection(cleaned, available_inventory)
         if selected is not None:
-            merged = {**previous_entities, "selected_car_id": selected, "wants_adjustment": False}
+            merged = {**merged_entities, "selected_car_id": selected, "wants_adjustment": False}
             return IntentType.CAR_BOOKING, 0.99, merged
 
         return None  # could not resolve
@@ -248,6 +264,22 @@ class IntentService:
                 next_stage=prev_stage,
                 response_message="I couldn't read that car selection. Please try again.",
                 raw_query=query, available_inventory=available_inventory,
+            )
+        
+        # 3a. Fast path: staff collection stages bypass ALL NLU.
+        # Semantic models always misfire on phone numbers, names, emails,
+        # and licence strings — there is nothing to classify, the raw value
+        # IS the answer. Skip straight to the booking flow.
+        if prev_stage in _BOOKING_STAGES and previous_intent in CAR_INTENTS:
+            merged = {**previous_entities, **extract_entities(cleaned)}
+            logger.info(f"[{session_id}] Staff-stage fast-path — stage: {prev_stage}, skipping NLU")
+            return await car_booking_run(
+                detected_intent=IntentType.CAR_BOOKING,
+                confidence=0.99,
+                merged_entities=merged,
+                available_inventory=available_inventory,
+                raw_query=query,
+                context=context,
             )
 
         # 4. Semantic intent detection (cosine similarity — fast)

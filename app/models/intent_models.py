@@ -7,6 +7,7 @@ class IntentRequest(BaseModel):
     query: str
     user_id: Optional[int] = None
     session_id: Optional[str] = None
+    accNum: int = None
 
 
 class IntentResponse(BaseModel):
@@ -17,6 +18,7 @@ class IntentResponse(BaseModel):
     missing_entities: List[str] = []
     next_stage: Optional[str] = None
     response_message: Optional[str] = None
+    redirect_url: Optional[str] = None
     data: Optional[List[Dict[str, Any]]] = None
     available_inventory: Optional[List[Dict[str, Any]]] = None
     cars: List[Dict[str, Any]] = []

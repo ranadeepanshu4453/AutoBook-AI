@@ -134,6 +134,21 @@ class MongoDB:
             await self.db[collection].create_index(keys, unique=unique)
         except Exception as e:
             logger.error(f"create_index failed [{collection}]: {e}")
+            
+    async def create_rate_limiting_index(
+    self,
+    collection: str,
+    keys: list[tuple],
+    unique: bool = False,
+    expire_after_seconds: int | None = None,  # ← ADD
+    ) -> None:
+        try:
+            kwargs = {"unique": unique}
+            if expire_after_seconds is not None:
+                kwargs["expireAfterSeconds"] = expire_after_seconds
+            await self.db[collection].create_index(keys, **kwargs)
+        except Exception as e:
+            logger.error(f"create_index failed [{collection}]: {e}")
 
 
 mongo_db = MongoDB()

@@ -9,7 +9,7 @@ from app.core.logger import logger
 from app.learning.example_store import example_store
 from app.data.intent_examples import INTENT_EXAMPLES
 
-MIN_NEW_EXAMPLES = 10
+MIN_NEW_EXAMPLES = 1
 
 
 class ModelTrainer:
@@ -78,7 +78,8 @@ class ModelTrainer:
             content = path.read_text()
             for intent, queries in additional.items():
                 # Find the intent key and its list, insert new items before ]
-                pattern = rf'([\'"]{re.escape(intent)}[\'"]\s*:\s*\[)(.*?)(\])'
+                enum_key = f"IntentType.{intent.upper()}"
+                pattern = rf'({re.escape(enum_key)}\s*:\s*\[)(.*?)(\])'
                 match = re.search(pattern, content, re.DOTALL)
                 if match:
                     new_items = "".join(f'\n    "{q}",' for q in queries)

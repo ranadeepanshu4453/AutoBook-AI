@@ -102,6 +102,26 @@ class StateManager:
         except Exception as e:
             logger.error(f"[{session_id}] Failed to clear context: {e}")
 
+    async def reset_context(self, session_id: str) -> None:
+            """
+            Reset the the filters.
+            """
+            try:
+                await mongo_db.db[self.COLLECTION].update_one(
+                    {"session_id": session_id},
+                    {"$set": {
+                        "active_flow":          None,
+                        "conversation_stage":   None,
+                        "current_intent":       "car_booking",
+                        "collected_entities":   {},
+                        "available_inventory":  [],
+                        "updated_at":           _utcnow(),
+                    }},
+                )
+                logger.info(f"[{session_id}] Context reset — all filters cleared")
+            except Exception as e:
+                logger.error(f"[{session_id}] Failed to clear context: {e}")
+
     async def ensure_indexes(self) -> None:
         """
         Call once at application startup (e.g. in lifespan handler).

@@ -135,7 +135,7 @@ def format_bookings_for_display(bookings: list[dict]) -> list[dict]:
 def make_response(
     intent, confidence, entities, missing_entities,
     next_stage, response_message, raw_query,
-    data=None, available_inventory=None,
+    data=None, available_inventory=None, redirect_url=None,
 ) -> IntentResponse:
     return IntentResponse(
         intent=intent,
@@ -144,6 +144,7 @@ def make_response(
         missing_entities=missing_entities,
         next_stage=next_stage,
         response_message=response_message,
+        redirect_url=redirect_url,
         raw_query=raw_query,
         data=data, #raw data
         available_inventory=available_inventory, #initially raw but update with filters

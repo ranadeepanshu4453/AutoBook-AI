@@ -19,6 +19,10 @@ pandas==2.2.3
 # Vector
 chromadb
 
+# Token
+pyjwt 
+httpx
+
 # Removed — not needed in production
 # mysql-connector-python  (using aiomysql instead, don't need both)
 # chromadb                (not used in current codebase)
