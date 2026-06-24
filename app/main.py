@@ -10,6 +10,12 @@ from app.learning.retraining_scheduler import retrain_loop
 from app.api.v1.endpoints.feedback import router as feedback_router
 from app.ollama.ollama_service import ollama_service
 from app.core.rate_limiter import rate_limiter
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+BASE_DIR = Path(__file__).resolve().parent
+FRONTEND_DIR = BASE_DIR / "Front-end"
 
 
 ALLOWED_ORIGINS = [
@@ -76,6 +82,14 @@ app = FastAPI(
     title="RentGenie Microservice",
     lifespan=lifespan
 )
+
+# Serve frontend assets
+app.mount(
+    "/static",
+    StaticFiles(directory=FRONTEND_DIR),
+    name="static"
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -88,4 +102,4 @@ app.include_router(v1_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
-    return {"message": "RentGenie Microservice is online"}
+    return FileResponse(FRONTEND_DIR / "index.html")

@@ -828,7 +828,7 @@
 
     <!-- CHAT TOGGLE -->
     <button class="chat-toggle" id="toggleChatBtn" aria-label="Open chat assistant">
-        <img src="happy.png" alt="Chatbot" class="chat-icon p-1" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
+        <img src="/static/happy.png" alt="Chatbot" class="chat-icon p-1" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
     </button>
 
     <!-- CHAT WIDGET CONTAINER -->
@@ -918,9 +918,8 @@
             
             // ── CHAT LOGIC ──
             (function initChat() {
-                const API_URL = 'https://copier-sequel-gestation.ngrok-free.dev/api/v1/intent/analyze';
+                const API_URL = window.location.origin + '/api/v1/intent/analyze';
                 const USER_ID = 12;
-
                 const FUEL_MAP = { d: 'Diesel', p: 'Petrol', b: 'Hybrid', e: 'Electric', h: 'Hydrogen' };
                 const TRANS_MAP = { '1': 'Automatic', '2': 'Manual', automatic: 'Automatic', manual: 'Manual' };
                 const BODY_MAP = { s: 'Sedan', '1': 'Hatchback', '2': 'SUV', '3': 'Coupe', '4': 'Sports Car',
